@@ -11,7 +11,7 @@ const apiTarget = process.env.VITE_API_BASE || "http://localhost:8090";
 // https://vite.dev/config/
 export default defineConfig({
   // Served under /admin in production (the marketing site owns "/").
-  base: "/admin/",
+  base: "/",
   plugins: [react()],
   server: {
     port: 5174,
