@@ -9,23 +9,25 @@ import { AuthLayout } from "./AuthLayout";
 
 const DOWNLOAD_URL = import.meta.env.VITE_DOWNLOAD_URL || "/";
 
-/** Brand mark shown inside the card — pulse/activity glyph on a violet gradient tile. */
+/** Brand mark shown inside the card — pulse/activity glyph on a Finjulia gradient tile. */
 function LogoMark() {
   return (
     <span className="admin-login__logo" aria-hidden>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="BiBoTracking">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Finjulia">
         <defs>
-          <linearGradient id="biboLogoGrad" x1="6" y1="4" x2="42" y2="46" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="#9a90f7" />
-            <stop offset="1" stopColor="#6157e6" />
+          <linearGradient id="finjuliaLogoGrad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="#2563eb" />
+            <stop offset="0.5" stopColor="#6366f1" />
+            <stop offset="1" stopColor="#7c3aed" />
           </linearGradient>
         </defs>
-        <rect x="0" y="0" width="48" height="48" rx="15" fill="url(#biboLogoGrad)" />
+        <rect x="0" y="0" width="48" height="48" rx="14" fill="url(#finjuliaLogoGrad)" />
+        <circle cx="24" cy="24" r="14" fill="none" stroke="#fff" strokeWidth="2.5" />
         <path
-          d="M12 24h6l3 8 6-16 3 8h6"
+          d="M12 24 h5 l3 -7 l4 14 l3 -7 h7"
           fill="none"
           stroke="#fff"
-          strokeWidth="3"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />

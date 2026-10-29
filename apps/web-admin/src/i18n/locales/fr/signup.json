@@ -1,4 +1,4 @@
-{
+﻿{
   "rail": {
     "personaTitle": "Choisir le type de compte",
     "personaDesc": "Personnel, équipe ou famille",
@@ -23,7 +23,7 @@
     "addMember": "Impossible d'ajouter {{member}}."
   },
   "persona": {
-    "heading": "Comment allez-vous utiliser BiBoTracking ?",
+    "heading": "Comment allez-vous utiliser Finjulia ?",
     "sub": "Vous pourrez changer cela plus tard.",
     "back": "Retour",
     "justMeTitle": "Juste moi",
@@ -48,7 +48,7 @@
   "account": {
     "back": "← Retour",
     "title": "Créer un compte",
-    "sub": "Profitez pleinement de BiBoTracking.",
+    "sub": "Profitez pleinement de Finjulia.",
     "name": "Votre nom",
     "identifier": "E-mail ou nom d'utilisateur",
     "identifierPlaceholder": "vous@exemple.com ou un nom d'utilisateur",
@@ -77,7 +77,7 @@
     "goToDashboard": "Aller au tableau de bord"
   },
   "clipboard": {
-    "text": "Identifiants BiBoTracking\nNom d'utilisateur ou e-mail : {{login}}\nMot de passe : {{password}}"
+    "text": "Identifiants Finjulia\nNom d'utilisateur ou e-mail : {{login}}\nMot de passe : {{password}}"
   },
   "members": {
     "title": "Ajoutez vos {{members}}",

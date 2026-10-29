@@ -177,13 +177,15 @@ func (h *OwnerHandler) UpdateSettings(c *gin.Context) {
 			fields[key] = n
 		}
 	}
-	if raw, ok := body["allow_employee_override"]; ok {
-		var b bool
-		if json.Unmarshal(raw, &b) != nil {
-			badRequest(c, "allow_employee_override must be a boolean")
-			return
+	for _, bKey := range []string{"allow_employee_override", "screenshots_enabled", "continuous_capture_enabled", "manual_capture_enabled"} {
+		if raw, ok := body[bKey]; ok {
+			var b bool
+			if json.Unmarshal(raw, &b) != nil {
+				badRequest(c, bKey+" must be a boolean")
+				return
+			}
+			fields[bKey] = b
 		}
-		fields["allow_employee_override"] = b
 	}
 	if raw, ok := body["screenshot_mode"]; ok {
 		var m string
@@ -236,14 +238,20 @@ func (h *OwnerHandler) Policy(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"managed":                   true,
-		"screenshot_interval_s":     p.ScreenshotIntervalS,
-		"idle_threshold_s":          p.IdleThresholdS,
-		"screenshot_retention_days": p.ScreenshotRetentionDays,
-		"allow_employee_override":   p.AllowEmployeeOverride,
-		"kind":                      p.Kind,
-		"screenshot_mode":           p.ScreenshotMode,
-		"screenshot_skip_apps":      p.ScreenshotSkipApps,
+		"managed":                    true,
+		"screenshot_interval_s":      p.ScreenshotIntervalS,
+		"idle_threshold_s":           p.IdleThresholdS,
+		"screenshot_retention_days":  p.ScreenshotRetentionDays,
+		"allow_employee_override":    p.AllowEmployeeOverride,
+		"kind":                       p.Kind,
+		"screenshot_mode":            p.ScreenshotMode,
+		"screenshot_skip_apps":       p.ScreenshotSkipApps,
+		"screenshots_enabled":        p.ScreenshotsEnabled,
+		"continuous_capture_enabled": p.ContinuousCaptureEnabled,
+		"manual_capture_enabled":     p.ManualCaptureEnabled,
+		"capture_enabled":            p.CaptureEnabled,
+		"policy_version":             p.PolicyVersion,
+		"policy_updated_at":          p.PolicyUpdatedAt,
 	})
 }
 

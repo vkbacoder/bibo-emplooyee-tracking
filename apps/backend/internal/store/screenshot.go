@@ -80,21 +80,24 @@ type ScreenshotRow struct {
 	Height          *int
 	DisplayID       *int
 	ClientUpdatedAt int64
+	RequestID       *string
 }
 
 const screenshotUpsert = `
 INSERT INTO screenshots
-  (client_uuid, user_id, business_id, device_id, ts, file_path, byte_size, width, height, display_id, client_updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+  (client_uuid, user_id, business_id, device_id, ts, file_path, byte_size, width, height, display_id, client_updated_at, request_id)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 ON CONFLICT (client_uuid) DO UPDATE SET
   ts = EXCLUDED.ts, file_path = EXCLUDED.file_path, byte_size = EXCLUDED.byte_size,
   width = EXCLUDED.width, height = EXCLUDED.height, display_id = EXCLUDED.display_id,
-  client_updated_at = EXCLUDED.client_updated_at, received_at = now()`
+  client_updated_at = EXCLUDED.client_updated_at,
+  request_id = COALESCE(EXCLUDED.request_id, screenshots.request_id),
+  received_at = now()`
 
 // UpsertScreenshot idempotently records screenshot metadata keyed by client_uuid.
 func (s *Store) UpsertScreenshot(ctx context.Context, userID, businessID string, r ScreenshotRow) error {
 	_, err := s.pool.Exec(ctx, screenshotUpsert,
 		r.ClientUUID, userID, businessID, r.DeviceID, r.Ts,
-		r.FilePath, r.ByteSize, r.Width, r.Height, r.DisplayID, r.ClientUpdatedAt)
+		r.FilePath, r.ByteSize, r.Width, r.Height, r.DisplayID, r.ClientUpdatedAt, r.RequestID)
 	return err
 }

@@ -50,6 +50,7 @@ func New(cfg *config.Config, st *store.Store, files *filestore.Store, ret *reten
 	keepaliveH := handlers.NewKeepaliveHandler(cfg.KeepaliveToken)
 	messagesH := handlers.NewMessagesHandler(st, cfg.JWTSecret)
 	adminMsgH := handlers.NewAdminMessagesHandler(st)
+	policyH := handlers.NewScreenshotPolicyHandler(st)
 
 	// Counted installer downloads (production, when static content is served). Takes
 	// precedence over the static NoRoute fallback below.
@@ -93,6 +94,22 @@ func New(cfg *config.Config, st *store.Store, files *filestore.Store, ret *reten
 
 	// Capture policy for the desktop (employee's org settings).
 	authed.GET("/policy", ownerH.Policy)
+
+	// Server-controlled screenshot management (desktop client contract)
+	authed.GET("/screenshot-policy", policyH.GetScreenshotPolicy)
+	authed.POST("/screenshot-policy/ack", policyH.AckScreenshotPolicy)
+	authed.GET("/screenshot-requests/pending", policyH.GetPendingScreenshotRequests)
+	authed.POST("/screenshot-requests/:request_id/ack", policyH.AckScreenshotRequest)
+
+	// Manager screenshot management & employee overrides
+	authed.GET("/businesses/:id/screenshot-settings", policyH.GetScreenshotSettings)
+	authed.PATCH("/businesses/:id/screenshot-settings", policyH.UpdateScreenshotSettings)
+	authed.GET("/businesses/:id/employees/:employee_id/policy", policyH.GetEmployeePolicy)
+	authed.PATCH("/businesses/:id/employees/:employee_id/policy", policyH.UpdateEmployeePolicy)
+	authed.POST("/businesses/:id/employees/:employee_id/policy/reset", policyH.ResetEmployeePolicy)
+	authed.POST("/businesses/:id/employees/:employee_id/screenshot-requests", policyH.CreateScreenshotRequest)
+	authed.GET("/businesses/:id/employees/:employee_id/screenshot-requests", policyH.ListEmployeeScreenshotRequests)
+	authed.POST("/businesses/:id/screenshot-requests/:request_id/retry", policyH.RetryScreenshotRequest)
 
 	// In-app messages for the desktop (announcements, surveys, promos).
 	authed.GET("/messages", messagesH.List)

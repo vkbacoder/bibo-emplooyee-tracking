@@ -8,6 +8,28 @@
     "storage": "Manual cleanup",
     "account": "Account"
   },
+  "masterSwitch": {
+    "title": "Screenshot capture (Master switch)",
+    "desc": "Turn screenshot capturing on or off globally across the entire organization.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "saved": "Screenshot master switch updated.",
+    "offWarning": "Global screenshot capture is currently OFF. All periodic and manual captures are disabled."
+  },
+  "continuousCapture": {
+    "title": "Continuous capture",
+    "desc": "Automatically take screenshots at configured intervals during active work.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "saved": "Continuous capture setting updated."
+  },
+  "manualCapture": {
+    "title": "Manual capture requests",
+    "desc": "Allow managers to trigger instant screenshots via the 'Capture Now' button.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "saved": "Manual capture setting updated."
+  },
   "capturePolicy": {
     "title": "Capture policy",
     "desc": "Whether {{members}} can change capture settings on their own device.",
