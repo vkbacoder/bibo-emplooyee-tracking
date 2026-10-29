@@ -1,4 +1,4 @@
-{
+﻿{
   "rail": {
     "personaTitle": "Chọn loại tài khoản",
     "personaDesc": "Cá nhân, nhóm hoặc gia đình",
@@ -77,7 +77,7 @@
     "goToDashboard": "Đến bảng điều khiển"
   },
   "clipboard": {
-    "text": "Thông tin đăng nhập BiBoTracking\nTên đăng nhập hoặc email: {{login}}\nMật khẩu: {{password}}"
+    "text": "Thông tin đăng nhập Finjulia\nTên đăng nhập hoặc email: {{login}}\nMật khẩu: {{password}}"
   },
   "members": {
     "title": "Thêm {{members}} của bạn",

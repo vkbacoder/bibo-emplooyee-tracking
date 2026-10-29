@@ -16,20 +16,25 @@ var ErrForbidden = errors.New("forbidden")
 
 // Business is a company/team owned by a user.
 type Business struct {
-	ID                      string   `json:"id"`
-	Name                    string   `json:"name"`
-	Kind                    string   `json:"kind"` // 'team' | 'family'
-	OwnerUserID             string   `json:"owner_user_id"`
-	ScreenshotRetentionDays *int     `json:"screenshot_retention_days"`
-	ScreenshotIntervalS     int      `json:"screenshot_interval_s"`
-	IdleThresholdS          int      `json:"idle_threshold_s"`
-	AllowEmployeeOverride   bool     `json:"allow_employee_override"`
-	ScreenshotMode          string   `json:"screenshot_mode"` // 'privacy' | 'normal'
-	ScreenshotSkipApps      []string `json:"screenshot_skip_apps"`
+	ID                       string    `json:"id"`
+	Name                     string    `json:"name"`
+	Kind                     string    `json:"kind"` // 'team' | 'family'
+	OwnerUserID              string    `json:"owner_user_id"`
+	ScreenshotRetentionDays  *int      `json:"screenshot_retention_days"`
+	ScreenshotIntervalS      int       `json:"screenshot_interval_s"`
+	IdleThresholdS           int       `json:"idle_threshold_s"`
+	AllowEmployeeOverride    bool      `json:"allow_employee_override"`
+	ScreenshotMode           string    `json:"screenshot_mode"` // 'privacy' | 'normal'
+	ScreenshotSkipApps       []string  `json:"screenshot_skip_apps"`
+	ScreenshotsEnabled       bool      `json:"screenshots_enabled"`
+	ContinuousCaptureEnabled bool      `json:"continuous_capture_enabled"`
+	ManualCaptureEnabled     bool      `json:"manual_capture_enabled"`
+	PolicyVersion            int       `json:"policy_version"`
+	PolicyUpdatedAt          time.Time `json:"policy_updated_at"`
 }
 
 // businessCols is the column list backing a Business scan (see scanBusiness).
-const businessCols = "id, name, kind, owner_user_id, screenshot_retention_days, screenshot_interval_s, idle_threshold_s, allow_employee_override, screenshot_mode, screenshot_skip_apps"
+const businessCols = "id, name, kind, owner_user_id, screenshot_retention_days, screenshot_interval_s, idle_threshold_s, allow_employee_override, screenshot_mode, screenshot_skip_apps, screenshots_enabled, continuous_capture_enabled, manual_capture_enabled, policy_version, policy_updated_at"
 
 // Employee is a member with the employee role within a business.
 type Employee struct {
@@ -67,7 +72,9 @@ func scanBusiness(s scanner) (Business, error) {
 	var b Business
 	err := s.Scan(&b.ID, &b.Name, &b.Kind, &b.OwnerUserID, &b.ScreenshotRetentionDays,
 		&b.ScreenshotIntervalS, &b.IdleThresholdS, &b.AllowEmployeeOverride,
-		&b.ScreenshotMode, &b.ScreenshotSkipApps)
+		&b.ScreenshotMode, &b.ScreenshotSkipApps,
+		&b.ScreenshotsEnabled, &b.ContinuousCaptureEnabled, &b.ManualCaptureEnabled,
+		&b.PolicyVersion, &b.PolicyUpdatedAt)
 	return b, err
 }
 
@@ -194,22 +201,25 @@ func (s *Store) ListEmployees(ctx context.Context, businessID string) ([]Employe
 // settableColumns whitelists the business columns owners may PATCH, guarding the
 // dynamic UPDATE against arbitrary column names.
 var settableColumns = map[string]bool{
-	"screenshot_retention_days": true,
-	"screenshot_interval_s":     true,
-	"idle_threshold_s":          true,
-	"allow_employee_override":   true,
-	"screenshot_mode":           true,
-	"screenshot_skip_apps":      true,
+	"screenshot_retention_days":  true,
+	"screenshot_interval_s":      true,
+	"idle_threshold_s":           true,
+	"allow_employee_override":    true,
+	"screenshot_mode":            true,
+	"screenshot_skip_apps":       true,
+	"screenshots_enabled":        true,
+	"continuous_capture_enabled": true,
+	"manual_capture_enabled":     true,
 }
 
 // UpdateBusinessSettings updates only the provided columns (keys must be in
 // settableColumns; values are already typed by the caller). A nil value sets NULL
-// (used for "keep screenshots forever").
+// (used for "keep screenshots forever"). It also automatically increments policy_version.
 func (s *Store) UpdateBusinessSettings(ctx context.Context, businessID string, fields map[string]any) error {
 	if len(fields) == 0 {
 		return nil
 	}
-	sets := make([]string, 0, len(fields))
+	sets := make([]string, 0, len(fields)+2)
 	args := []any{businessID}
 	for col, val := range fields {
 		if !settableColumns[col] {
@@ -218,6 +228,7 @@ func (s *Store) UpdateBusinessSettings(ctx context.Context, businessID string, f
 		args = append(args, val)
 		sets = append(sets, fmt.Sprintf("%s = $%d", col, len(args)))
 	}
+	sets = append(sets, "policy_version = policy_version + 1", "policy_updated_at = now()")
 	q := fmt.Sprintf("UPDATE businesses SET %s WHERE id = $1", strings.Join(sets, ", "))
 	ct, err := s.pool.Exec(ctx, q, args...)
 	if err != nil {
@@ -231,17 +242,24 @@ func (s *Store) UpdateBusinessSettings(ctx context.Context, businessID string, f
 
 // CapturePolicy is the org-controlled capture configuration the desktop applies.
 type CapturePolicy struct {
-	ScreenshotIntervalS     int      `json:"screenshot_interval_s"`
-	IdleThresholdS          int      `json:"idle_threshold_s"`
-	ScreenshotRetentionDays *int     `json:"screenshot_retention_days"`
-	AllowEmployeeOverride   bool     `json:"allow_employee_override"`
-	Kind                    string   `json:"kind"` // 'team' | 'family' — drives onboarding copy
-	ScreenshotMode          string   `json:"screenshot_mode"`
-	ScreenshotSkipApps      []string `json:"screenshot_skip_apps"`
+	ScreenshotIntervalS      int      `json:"screenshot_interval_s"`
+	IdleThresholdS           int      `json:"idle_threshold_s"`
+	ScreenshotRetentionDays  *int     `json:"screenshot_retention_days"`
+	AllowEmployeeOverride    bool     `json:"allow_employee_override"`
+	Kind                     string   `json:"kind"` // 'team' | 'family' — drives onboarding copy
+	ScreenshotMode           string   `json:"screenshot_mode"`
+	ScreenshotSkipApps       []string `json:"screenshot_skip_apps"`
+	ScreenshotsEnabled       bool     `json:"screenshots_enabled"`
+	ContinuousCaptureEnabled bool     `json:"continuous_capture_enabled"`
+	ManualCaptureEnabled     bool     `json:"manual_capture_enabled"`
+	CaptureEnabled           bool     `json:"capture_enabled"`
+	PolicyVersion            int      `json:"policy_version"`
+	PolicyUpdatedAt          string   `json:"policy_updated_at"`
 }
 
 // PolicyForUser returns the capture policy for the user's business, or nil when the
 // user belongs to no business (a standalone user → the desktop keeps local defaults).
+// It resolves effective settings considering global toggles and employee overrides.
 func (s *Store) PolicyForUser(ctx context.Context, userID string) (*CapturePolicy, error) {
 	bizID, err := s.ResolveBusinessForUser(ctx, userID, nil)
 	if errors.Is(err, ErrNotFound) {
@@ -251,13 +269,33 @@ func (s *Store) PolicyForUser(ctx context.Context, userID string) (*CapturePolic
 		return nil, err
 	}
 	var p CapturePolicy
+	var policyUpdatedAt time.Time
 	err = s.pool.QueryRow(ctx,
-		`SELECT screenshot_interval_s, idle_threshold_s, screenshot_retention_days, allow_employee_override, kind, screenshot_mode, screenshot_skip_apps
+		`SELECT screenshot_interval_s, idle_threshold_s, screenshot_retention_days, allow_employee_override, kind,
+		        screenshot_mode, screenshot_skip_apps, screenshots_enabled, continuous_capture_enabled, manual_capture_enabled,
+		        policy_version, policy_updated_at
 		   FROM businesses WHERE id = $1`, bizID,
-	).Scan(&p.ScreenshotIntervalS, &p.IdleThresholdS, &p.ScreenshotRetentionDays, &p.AllowEmployeeOverride, &p.Kind, &p.ScreenshotMode, &p.ScreenshotSkipApps)
+	).Scan(&p.ScreenshotIntervalS, &p.IdleThresholdS, &p.ScreenshotRetentionDays, &p.AllowEmployeeOverride, &p.Kind,
+		&p.ScreenshotMode, &p.ScreenshotSkipApps, &p.ScreenshotsEnabled, &p.ContinuousCaptureEnabled, &p.ManualCaptureEnabled,
+		&p.PolicyVersion, &policyUpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	p.PolicyUpdatedAt = policyUpdatedAt.Format(time.RFC3339)
+
+	// Apply effective policy calculation rules for this employee
+	if effective, err := s.GetEffectiveScreenshotPolicy(ctx, bizID, userID); err == nil && effective != nil {
+		p.CaptureEnabled = effective.CaptureEnabled
+		p.ScreenshotsEnabled = effective.CaptureEnabled
+		p.ContinuousCaptureEnabled = effective.ContinuousCaptureEnabled
+		p.ManualCaptureEnabled = effective.ManualCaptureEnabled
+		p.ScreenshotIntervalS = effective.CaptureIntervalSeconds
+		p.PolicyVersion = effective.PolicyVersion
+		p.PolicyUpdatedAt = effective.PolicyUpdatedAt.Format(time.RFC3339)
+	} else {
+		p.CaptureEnabled = p.ScreenshotsEnabled
+	}
+
 	return &p, nil
 }
 

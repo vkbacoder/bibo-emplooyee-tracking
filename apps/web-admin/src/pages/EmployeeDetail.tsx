@@ -2,23 +2,26 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  createScreenshotRequest,
   reportActivity,
   reportBrowser,
   reportEmployees,
   reportKeystrokes,
   reportScreenshots,
 } from "../api/endpoints";
-import type {
-  ActivityResponse,
-  BrowserVisit,
-  KeystrokeBucket,
-  ReportEmployee,
-  ScreenshotMeta,
+import {
+  ApiError,
+  type ActivityResponse,
+  type BrowserVisit,
+  type KeystrokeBucket,
+  type ReportEmployee,
+  type ScreenshotMeta,
 } from "../api/types";
 import { ActivityPanel } from "../components/reports/ActivityPanel";
 import { BrowserPanel } from "../components/reports/BrowserPanel";
 import { KeystrokePanel } from "../components/reports/KeystrokePanel";
 import { ScreenshotGallery } from "../components/reports/ScreenshotGallery";
+import { EmployeePolicyModal } from "../components/EmployeePolicyModal";
 import { Notice, Spinner } from "../components/ui";
 import { dayRangeToUnix, fmtDuration, isoDate } from "../format";
 import { useBusinesses } from "../useBusinesses";
@@ -88,7 +91,8 @@ export function EmployeeDetail() {
   const { businesses } = useBusinesses();
   const { user } = useAuth();
   const { setTitle } = useDetailHeader();
-  const terms = memberTerms(businesses.find((b) => b.id === businessId)?.kind);
+  const selectedBiz = businesses.find((b) => b.id === businessId);
+  const terms = memberTerms(selectedBiz?.kind);
 
   // Single-day view by default; switch to "range" for a custom span.
   const [mode, setMode] = useState<"day" | "range">("day");
@@ -111,6 +115,30 @@ export function EmployeeDetail() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [captureNote, setCaptureNote] = useState<{ kind: "success" | "danger"; text: string } | null>(null);
+
+  async function triggerCaptureNow() {
+    if (!businessId || !id) return;
+    setCapturing(true);
+    setCaptureNote(null);
+    try {
+      await createScreenshotRequest(businessId, id);
+      setCaptureNote({ kind: "success", text: t("detail.captureTriggered") });
+    } catch (err) {
+      setCaptureNote({
+        kind: "danger",
+        text: err instanceof ApiError ? err.message : t("detail.captureFailed"),
+      });
+    } finally {
+      setCapturing(false);
+      setTimeout(() => {
+        setCaptureNote(null);
+      }, 5000);
+    }
+  }
 
   // Resolve the employee's identity from the roster (for the header).
   useEffect(() => {
@@ -228,6 +256,26 @@ export function EmployeeDetail() {
           )}
         </div>
 
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto", marginRight: 12 }}>
+          <button
+            type="button"
+            className="bibo-btn bibo-btn--secondary bibo-btn--sm"
+            onClick={() => setPolicyModalOpen(true)}
+          >
+            {t("detail.managePolicy")}
+          </button>
+          <button
+            type="button"
+            className="bibo-btn bibo-btn--primary bibo-btn--sm"
+            disabled={capturing || selectedBiz?.screenshots_enabled === false}
+            onClick={triggerCaptureNow}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <span style={{ display: "inline-flex", lineHeight: 0, width: 14, height: 14 }}>{IconCamera}</span>
+            <span>{capturing ? "…" : t("detail.captureNow")}</span>
+          </button>
+        </div>
+
         <div className="admin-datemode">
           <div className="bibo-seg bibo-seg--sm" role="tablist" aria-label={t("detail.dateMode")}>
             <button
@@ -267,6 +315,12 @@ export function EmployeeDetail() {
           )}
         </div>
       </div>
+
+      {captureNote && (
+        <div style={{ marginBottom: 12 }}>
+          <Notice kind={captureNote.kind}>{captureNote.text}</Notice>
+        </div>
+      )}
 
       {!businessId && <Notice kind="info">{t("detail.noBusinessContext")}</Notice>}
       {error && <Notice kind="danger">{error}</Notice>}
@@ -347,6 +401,18 @@ export function EmployeeDetail() {
           )}
         </div>
       </div>
+
+      {policyModalOpen && businessId && (
+        <EmployeePolicyModal
+          businessId={businessId}
+          employeeId={id}
+          employeeName={name}
+          onClose={() => setPolicyModalOpen(false)}
+          onSaved={() => {
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }

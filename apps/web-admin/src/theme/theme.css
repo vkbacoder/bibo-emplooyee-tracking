@@ -1,25 +1,36 @@
-/* ctracking — semantic design tokens (see docs/07-ui-design.md) */
+/* Finjulia — semantic design tokens (matching desktop application) */
 
 :root,
 :root[data-theme="light"] {
   --bg: #ffffff;
-  --bg-subtle: #f6f6f6;
-  --bg-inset: #ffffff;
-  --border: #e3e3e3;
-  --text: #1a1a1a;
-  --text-muted: #6b6b6b;
-  /* aliases used by components ported from the offline design */
+  --bg-subtle: #f8fafc;
+  --bg-inset: #f1f5f9;
+  --border: #e2e8f0;
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --text: #0f172a;
+  --text-muted: #64748b;
   --text-primary: var(--text);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui,
-    sans-serif;
-  --accent: #2d6cdf;
-  --accent-weak: #eaf1fe;
-  --danger: #c0392b;
-  --negative: #dc2626;
-  --success: #2e7d55;
-  --warn: #b8860b;
+  --font-sans: "Manrope Variable", "Manrope", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-weak: #eff6ff;
+  --accent-glow: rgba(37, 99, 235, 0.25);
+  --brand-gradient: linear-gradient(135deg, #2563eb 0%, #6366f1 50%, #7c3aed 100%);
+  --brand-strip: linear-gradient(90deg, #2563eb 0%, #6366f1 50%, #7c3aed 100%);
+  --brand: var(--accent);
+  --danger: #ef4444;
+  --negative: #ef4444;
+  --negative-soft: #fee2e2;
+  --success: #10b981;
+  --positive: #10b981;
+  --positive-soft: #dcfce7;
+  --warn: #f59e0b;
+  --info: #2563eb;
+  --info-soft: #eff6ff;
 
-  --radius: 6px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
@@ -32,94 +43,85 @@
   --fz-md: 16px;
   --fz-lg: 22px;
 
-  /* Signature background (UX v2, docs/14 §4 — overrides the flat rule in docs/07).
-     A bold blue→violet→pink mesh used app-wide; surfaces sit on it as translucent
-     glass. Components reference these tokens, never raw hex. */
-  --violet: #8b5cf6;
-  --pink: #ec4899;
-  --app-base: #f3f4fb;
-  --app-gradient: radial-gradient(
-      at 0% 0%,
-      color-mix(in srgb, var(--accent) 40%, transparent),
-      transparent 55%
-    ),
-    radial-gradient(at 100% 0%, color-mix(in srgb, var(--violet) 34%, transparent), transparent 55%),
-    radial-gradient(at 85% 100%, color-mix(in srgb, var(--pink) 28%, transparent), transparent 55%);
-  /* translucent "glass" surfaces over the gradient */
-  --surface: color-mix(in srgb, var(--bg) 68%, transparent);
-  --surface-strong: color-mix(in srgb, var(--bg) 85%, transparent);
-  --surface-glass-2: rgba(255, 255, 255, 0.07);
-  /* semantic + data-viz palette (dashboard cards, sparklines, status) */
-  --positive: #16a34a;
-  --positive-soft: #dcfce7;
-  --negative: #dc2626;
-  --negative-soft: #fee2e2;
-  --info: #3b82f6;
-  --info-soft: #deeafe;
-  --data-sky: #38bdf8;
+  /* Clean, flat enterprise surfaces */
+  --app-base: #f8fafc;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-glass-2: rgba(255, 255, 255, 0.85);
+  --surface-sunken: #f1f5f9;
+  --surface-hover: #f1f5f9;
+  --control-track: rgba(15, 23, 42, 0.08);
+
+  /* data-viz palette (shared with desktop) */
+  --data-sky: #0284c7;
   --data-mint: #10b981;
   --data-amber: #f59e0b;
   --data-rose: #f43f5e;
-  --data-lavender: #8b7df6;
+  --data-lavender: #6366f1;
   --data-teal: #14b8a6;
-  /* sunken track/inset surfaces (timeline, app bars, donut ring) */
-  --surface-sunken: #edeff5;
-  --control-track: rgba(20, 22, 27, 0.1);
-  /* brand (lavender-indigo) + focal stat card, per offline design */
-  --brand-tint: #f4f2fe;
-  --brand-400: #8b7df6;
-  --brand-500: #6c5ce7;
-  --brand-600: #5b4bd6;
-  --ring-focus: 0 0 0 3px rgba(108, 92, 231, 0.45);
-  --surface-hover: #f1f3f8;
-  --border-strong: #cbd2e0;
-  --border-subtle: rgba(20, 22, 27, 0.08);
-  --ink: #1b1f2b;
-  --focal-grad: linear-gradient(155deg, #20242e, #111319);
-  --focal-border: rgba(255, 255, 255, 0.08);
-  --focal-muted: rgba(255, 255, 255, 0.58);
+
+  --brand-tint: #eff6ff;
+  --brand-400: #60a5fa;
+  --brand-500: #2563eb;
+  --brand-600: #1d4ed8;
+  --ring-focus: 0 0 0 3px rgba(37, 99, 235, 0.35);
+  --border-strong: #cbd5e1;
+  --ink: #0f172a;
+  --focal-grad: linear-gradient(155deg, #1e293b, #0f172a);
+  --focal-border: rgba(255, 255, 255, 0.12);
+  --focal-muted: rgba(255, 255, 255, 0.7);
 }
 
 :root[data-theme="dark"] {
-  --bg: #1a1a1a;
-  --bg-subtle: #242424;
-  --bg-inset: #2e2e2e;
-  --border: #363636;
-  --text: #ececec;
-  --text-muted: #9a9a9a;
-  --accent: #5b8def;
-  --accent-weak: #1e2a40;
-  --danger: #e06a5c;
+  --bg: #0f172a;
+  --bg-subtle: #1e293b;
+  --bg-inset: #162032;
+  --border: #1e293b;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-weak: rgba(59, 130, 246, 0.16);
+  --accent-glow: rgba(59, 130, 246, 0.35);
+  --brand-gradient: linear-gradient(135deg, #2563eb 0%, #6366f1 50%, #7c3aed 100%);
+  --brand-strip: linear-gradient(90deg, #2563eb 0%, #6366f1 50%, #7c3aed 100%);
+  --brand: var(--accent);
+  --danger: #f87171;
   --negative: #f87171;
-  --success: #5fb58a;
-  --warn: #d6a93b;
-  /* dark background per offline design: near-black navy base + lavender/teal mesh */
-  --app-base: #0c0f16;
-  --app-gradient: radial-gradient(1200px 800px at 12% -8%, #1b1640, transparent 55%),
-    radial-gradient(1000px 700px at 100% 0%, #122033, transparent 50%),
-    linear-gradient(160deg, #11151e, #0b0e15);
-  --positive: #4ade80;
-  --positive-soft: color-mix(in srgb, #4ade80 16%, transparent);
-  --negative-soft: color-mix(in srgb, #f87171 16%, transparent);
-  --info: #93b4ff;
-  --info-soft: color-mix(in srgb, #6c8cff 16%, transparent);
-  --data-sky: #56ccf2;
+  --negative-soft: rgba(248, 113, 113, 0.16);
+  --success: #34d399;
+  --positive: #34d399;
+  --positive-soft: rgba(52, 211, 153, 0.16);
+  --warn: #fbbf24;
+  --info: #3b82f6;
+  --info-soft: rgba(59, 130, 246, 0.16);
+
+  --app-base: #0b0f19;
+  --surface: #131b2e;
+  --surface-strong: #1e293b;
+  --surface-sunken: #162032;
+  --surface-hover: #1e293b;
+  --surface-glass-2: rgba(19, 27, 46, 0.85);
+  --control-track: rgba(255, 255, 255, 0.1);
+
+  --data-sky: #38bdf8;
   --data-mint: #34d399;
   --data-amber: #fbbf24;
   --data-rose: #fb7185;
-  --data-lavender: #a78bfa;
+  --data-lavender: #818cf8;
   --data-teal: #2dd4bf;
-  --surface-sunken: #1b212d;
-  --control-track: rgba(255, 255, 255, 0.1);
-  /* focal stat card — near-black gradient + lavender border per offline dark */
-  --focal-grad: linear-gradient(155deg, #0e1016, #050608);
-  --focal-border: rgba(139, 125, 246, 0.32);
-  --focal-muted: rgba(255, 255, 255, 0.55);
-  --surface-hover: #1f2633;
+
+  --brand-tint: rgba(59, 130, 246, 0.12);
+  --brand-400: #60a5fa;
+  --brand-500: #3b82f6;
+  --brand-600: #2563eb;
+  --ring-focus: 0 0 0 3px rgba(59, 130, 246, 0.45);
   --border-strong: rgba(255, 255, 255, 0.18);
-  --brand-500: #6c5ce7;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --ink: #0b0e16;
+  --ink: #f8fafc;
+  --focal-grad: linear-gradient(155deg, #131b2e, #0b0f19);
+  --focal-border: rgba(59, 130, 246, 0.35);
+  --focal-muted: rgba(255, 255, 255, 0.65);
 }
 
 * {
@@ -134,22 +136,15 @@ body,
 }
 
 body {
-  /* light theme (default): subtle blue-grey lavender gradient per the offline
-     design; dark keeps its own signature gradient below */
-  background-color: #eaedf6;
-  background-image: radial-gradient(1200px 800px at 12% -8%, #ece9fa, transparent 55%),
-    radial-gradient(1000px 700px at 100% 0%, #e7ecf8, transparent 50%),
-    linear-gradient(160deg, #eef0f8, #e4e8f3);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+  background-color: var(--app-base);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui,
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: var(--fz-sm);
   -webkit-font-smoothing: antialiased;
 }
+
 :root[data-theme="dark"] body {
-  background: var(--app-gradient), var(--app-base);
+  background-color: var(--app-base);
 }
 
 .num {
@@ -163,62 +158,217 @@ body {
 
 /* ---------- layout ---------- */
 .app {
+  position: relative;
   display: grid;
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 220px 1fr;
   height: 100vh;
+  overflow: hidden;
+  background: var(--app-base);
 }
 
-/* ---------- sidebar: icon rail (admin-rail) ---------- */
-.admin-rail {
-  background: rgba(255, 255, 255, 0.72);
+/* 2px top brand gradient strip across whole app (matching desktop titlebar::before) */
+.app::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--brand-strip);
+  z-index: 9999;
+}
+
+/* ---------- Finjulia desktop-matched sidebar ---------- */
+.sidebar {
+  background: var(--surface);
   border-right: 1px solid var(--border);
-  padding: 18px 0 20px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  z-index: 40;
+  transition: transform 0.2s ease;
+}
+:root[data-theme="dark"] .sidebar {
+  background: #0f172a;
+  border-right-color: #1e293b;
+}
+
+.brand {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 18px;
 }
-:root[data-theme="dark"] .admin-rail {
-  background: rgba(255, 255, 255, 0.07); /* frosted glass over the dark gradient (offline --surface-glass-2) */
-  border-right-color: rgba(255, 255, 255, 0.06);
+.brand-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--brand-gradient);
+  box-shadow: 0 3px 8px var(--accent-glow);
+}
+.brand-logo svg {
+  width: 15px;
+  height: 15px;
+}
+.brand-text {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.15;
+}
+.brand-name {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.015em;
+}
+.brand-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--accent-weak);
+  color: var(--accent);
+}
+:root[data-theme="dark"] .brand-badge {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
 }
 
-.admin-rail__logo {
-  display: inline-flex;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  margin-bottom: 10px;
-}
-:root[data-theme="dark"] .admin-rail__logo {
-  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.55);
-}
-.admin-rail__logo svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.admin-rail__nav {
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   flex: 1;
-  width: 100%;
+}
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.nav-group + .nav-group {
+  margin-top: 18px;
+}
+.nav-group__label {
+  padding: 0 10px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  user-select: none;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.nav-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.nav-ic svg {
+  width: 16px;
+  height: 16px;
+}
+.nav-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-item:hover {
+  background: var(--bg-inset);
+  color: var(--text);
+}
+/* active item: vivid royal blue pill with white text + icon */
+.nav-item.active,
+.nav-item.active:hover {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+.nav-item.active .nav-ic svg {
+  stroke: #fff;
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+}
+:root[data-theme="dark"] .sidebar-user {
+  background: #162032;
+  border-color: #1e293b;
+}
+.sidebar-user__info {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-user__name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-user__role {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+/* Backward compatibility aliases for icon rail */
+.admin-rail {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 16px 0 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
-
 .admin-railbtn {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -229,45 +379,14 @@ body {
   color: var(--text);
 }
 .admin-railbtn.on {
-  background: #6c5ce7;
+  background: var(--accent);
   color: #fff;
-  box-shadow: 0 8px 18px -4px rgba(108, 92, 231, 0.5);
-}
-:root[data-theme="dark"] .admin-railbtn:not(.on) {
-  color: #6b7488;
-}
-:root[data-theme="dark"] .admin-railbtn:not(.on):hover {
-  color: var(--text);
+  box-shadow: 0 4px 12px -2px var(--accent-glow);
 }
 .admin-railbtn svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
-
-/* Hover/focus tooltip revealing the nav label (rail is icon-only). */
-.admin-railbtn__tip {
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%) translateX(-4px);
-  white-space: nowrap;
-  background: var(--text);
-  color: var(--bg);
-  padding: 5px 9px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s, transform 0.15s;
-  z-index: 40;
-}
-.admin-railbtn:hover .admin-railbtn__tip,
-.admin-railbtn:focus-visible .admin-railbtn__tip {
-  opacity: 1;
-  transform: translateY(-50%) translateX(0);
-}
-
 .admin-rail__foot {
   position: relative;
   display: flex;
@@ -346,48 +465,93 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.72);
+  padding: 8px 24px;
+  height: 52px;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  /* lift the whole topbar (incl. dropdown menus) above the content cards,
-     which create their own stacking contexts via backdrop-filter */
   position: relative;
   z-index: 30;
 }
 :root[data-theme="dark"] .admin-topbar {
-  background: rgba(255, 255, 255, 0.07); /* frosted glass over the dark gradient (offline --surface-glass-2) */
-  border-bottom-color: rgba(255, 255, 255, 0.06);
+  background: #0f172a;
+  border-bottom-color: #1e293b;
+}
+.admin-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-topbar__title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+.admin-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-inset);
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+.admin-menu-toggle:hover {
+  background: var(--bg-subtle);
+}
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 240px;
+    transform: translateX(-100%);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  }
+  .sidebar.sidebar--open {
+    transform: translateX(0);
+  }
+  .admin-menu-toggle {
+    display: inline-flex;
+  }
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 39;
+  }
 }
 :root[data-theme="dark"] .admin-bizpick__btn,
 :root[data-theme="dark"] .admin-newbiz {
-  background: #1b212d;
+  background: #162032;
   color: #f1f3f8;
-  border-color: #363636;
+  border-color: #1e293b;
 }
 :root[data-theme="dark"] .admin-bizpick__btn:hover:not(:disabled),
 :root[data-theme="dark"] .admin-newbiz:hover {
-  border-color: #363636;
-  background: #1f2633;
+  border-color: #334155;
+  background: #1e293b;
 }
 :root[data-theme="dark"] .admin-topbar .lang-trigger {
-  background: #1b212d;
-  color: #a6adbf;
-  border-color: #363636;
+  background: #162032;
+  color: #94a3b8;
+  border-color: #1e293b;
 }
 :root[data-theme="dark"] .admin-topbar .lang-trigger:hover {
-  border-color: #363636;
-  background: #1f2633;
+  border-color: #334155;
+  background: #1e293b;
 }
 :root[data-theme="dark"] .admin-topbar .lang-globe,
 :root[data-theme="dark"] .admin-topbar .lang-caret {
-  color: #a6adbf;
-}
-.admin-topbar__title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
+  color: #94a3b8;
 }
 .admin-topbar__right {
   display: flex;
@@ -397,16 +561,19 @@ body {
 /* keep the three control pills the same height */
 .admin-topbar .lang-trigger {
   height: 38px;
-  background: #ffffff;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
 }
 .admin-topbar .lang-trigger:hover {
   border-color: var(--border);
-  background: #f5f7fc;
+  background: var(--bg-inset);
 }
 /* min-height so the seg still aligns at 38px but can grow with its padding */
 .admin-topbar .bibo-seg {
   min-height: 38px;
-  background: #f3f4fc;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
 }
 
 /* standalone "new business" action on the header — same pill style as the
@@ -421,15 +588,15 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
-  background: var(--bg-inset);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 4px 14px -8px rgba(0, 0, 0, 0.35);
 }
 .admin-newbiz:hover {
   border-color: var(--text-muted);
+  background: var(--bg-inset);
 }
 .admin-newbiz svg {
   width: 15px;
@@ -452,15 +619,15 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   cursor: pointer;
-  box-shadow: 0 4px 14px -8px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 .admin-bizpick__btn:hover:not(:disabled) {
   border-color: var(--border);
-  background: #f5f7fc;
+  background: var(--bg-inset);
 }
 .admin-bizpick__btn:disabled {
   cursor: default;
@@ -474,12 +641,12 @@ body {
   border-radius: 7px;
   font-size: 11px;
   font-weight: 700;
-  background: #ecebfb;
-  color: #4c3cc9;
+  background: var(--accent-weak);
+  color: var(--accent);
 }
 :root[data-theme="dark"] .admin-bizpick__ic {
-  background: color-mix(in srgb, #6c5ce7 26%, transparent);
-  color: #c4bbff;
+  background: var(--accent-weak);
+  color: var(--accent);
 }
 .admin-bizpick__name {
   white-space: nowrap;
@@ -487,7 +654,7 @@ body {
 .admin-bizpick__btn svg {
   width: 15px;
   height: 15px;
-  color: #9aa1b4;
+  color: var(--text-muted);
 }
 /* dropdown menu (business switcher, etc.) */
 .admin-menu {
@@ -501,15 +668,15 @@ body {
   flex-direction: column;
   gap: 2px;
   padding: 6px;
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
 }
 :root[data-theme="dark"] .admin-menu {
-  background: #161b25;
+  background: #162032;
+  border-color: #1e293b;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
 }
 .admin-menu--left {
   left: 0;
@@ -525,7 +692,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 10px;
+  padding: 8px 10px;
   font: inherit;
   font-size: 13px;
   text-align: left;
@@ -533,14 +700,14 @@ body {
   color: var(--text);
   background: none;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   cursor: pointer;
 }
 .admin-menu__opt:hover {
   background: var(--bg-inset);
 }
 :root[data-theme="dark"] .admin-menu__opt:hover {
-  background: #1e2632;
+  background: #1e293b;
 }
 .admin-menu__label {
   flex: 1;
@@ -561,44 +728,44 @@ body {
   height: 16px;
 }
 .admin-menu__opt.on {
-  color: #6c5ce7;
-  background: #ecebfb;
+  color: var(--accent);
+  background: var(--accent-weak);
   font-weight: 600;
 }
 :root[data-theme="dark"] .admin-menu__opt.on {
-  color: #c4bbff;
-  background: color-mix(in srgb, #6c5ce7 22%, transparent);
+  color: var(--accent);
+  background: var(--accent-weak);
 }
 .admin-menu__sep {
   height: 1px;
   margin: 3px 6px;
-  background: #e3e3e3;
+  background: var(--border);
 }
 :root[data-theme="dark"] .admin-menu__sep {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
 }
 .admin-menu__action {
-  color: #3d4351;
+  color: var(--text);
 }
 .admin-menu__action .admin-menu__label {
-  font-size: 15px;
+  font-size: 14px;
 }
 .admin-menu__action:hover {
-  background: #f6f7fc;
+  background: var(--bg-inset);
 }
 :root[data-theme="dark"] .admin-menu__action:hover {
-  background: #1e2632;
+  background: #1e293b;
 }
 .admin-menu__plus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 .admin-menu__plus svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
 }
 
 /* theme segmented pill */
@@ -658,7 +825,7 @@ body {
   border-radius: 50%;
 }
 .admin-acct-btn:focus-visible {
-  outline: 2px solid #8b7df6;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 .admin-acctmenu {
@@ -1378,8 +1545,8 @@ select.input:focus,
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .bibo-input:focus-within {
-  border-color: #8b7df6;
-  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.45);
+  border-color: var(--accent);
+  box-shadow: var(--ring-focus);
 }
 .bibo-input__icon {
   flex: none;
@@ -1399,7 +1566,7 @@ select.input:focus,
   background: transparent;
   font: inherit;
   font-size: 14px;
-  color: var(--text-muted);
+  color: var(--text);
 }
 .bibo-input input::placeholder {
   color: var(--text-muted);
@@ -1423,14 +1590,15 @@ select.input:focus,
   border: none;
   border-radius: 999px;
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 .bibo-btn--sm {
   height: 34px;
   padding: 0 14px;
-  font-size: 13.5px;
+  font-size: 13px;
   gap: 6px;
 }
 .bibo-btn--sm svg {
@@ -1440,7 +1608,7 @@ select.input:focus,
 /* dark: settings cleanup button sits on the card surface — matching fill,
    faint rim, lighter hover (offline surface-card / surface-hover) */
 :root[data-theme="dark"] .set-group .bibo-btn--secondary {
-  background: #161b25;
+  background: #162032;
   border-color: rgba(255, 255, 255, 0.1);
   color: #f1f3f8;
 }
@@ -1450,12 +1618,13 @@ select.input:focus,
   color: #f1f3f8;
 }
 .bibo-btn--primary {
-  background: #6c5ce7;
+  background: var(--accent);
   color: #fff;
-  box-shadow: 0 12px 24px -12px rgba(108, 92, 231, 0.9);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 .bibo-btn--primary:hover:not(:disabled) {
-  background: #5f4dd0;
+  background: var(--accent-hover);
+  box-shadow: 0 4px 14px var(--accent-glow);
 }
 .bibo-btn--primary:disabled {
   cursor: not-allowed;
@@ -1502,28 +1671,28 @@ select.input:focus,
   font: inherit;
   font-size: 14px;
   font-weight: 600;
-  color: #6c5ce7;
+  color: var(--accent);
   text-decoration: none;
   cursor: pointer;
 }
 .admin-link:hover {
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 
-/* ---------- signup wizard — persona step (offline design, single centered card) ---------- */
+/* ---------- signup wizard — persona step (single centered card) ---------- */
 .admin-wizard {
   width: 560px;
   max-width: 100%;
-  background: #fcfcfe;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 32px 36px 28px;
-  box-shadow: 0 20px 50px -20px rgba(38, 30, 90, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 :root[data-theme="dark"] .admin-wizard {
   background: var(--surface-strong);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
 }
 .admin-wiz-rail {
   display: flex;
@@ -1538,10 +1707,10 @@ select.input:focus,
   background: var(--border);
 }
 .admin-wiz-pip.on {
-  background: #6c5ce7;
+  background: var(--accent);
 }
 .admin-wiz-pip.done {
-  background: color-mix(in srgb, #6c5ce7 50%, var(--border));
+  background: color-mix(in srgb, var(--accent) 50%, var(--border));
 }
 .admin-wiz-step {
   text-align: center;
@@ -1549,7 +1718,7 @@ select.input:focus,
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #9aa1b4;
+  color: var(--text-muted);
   margin-bottom: 18px;
 }
 .admin-wiz-title {
@@ -1579,8 +1748,8 @@ select.input:focus,
   text-align: left;
   padding: 16px 18px;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: #f2f4fb;
+  border-radius: 12px;
+  background: var(--bg-inset);
   font: inherit;
   color: var(--text);
   cursor: pointer;
@@ -1590,14 +1759,14 @@ select.input:focus,
   background: var(--bg-subtle);
 }
 .admin-persona:hover {
-  border-color: #6c5ce7;
+  border-color: var(--accent);
   background: var(--bg-inset);
-  box-shadow: 0 8px 20px -12px rgba(108, 92, 231, 0.6);
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 .admin-persona__ic {
   flex: none;
   display: inline-flex;
-  color: #6c5ce7;
+  color: var(--accent);
 }
 .admin-persona__ic svg {
   width: 24px;
@@ -1623,7 +1792,7 @@ select.input:focus,
 .admin-persona__go {
   flex: none;
   display: inline-flex;
-  color: #9aa1b4;
+  color: var(--text-muted);
 }
 .admin-persona__go svg {
   width: 20px;
@@ -1643,7 +1812,7 @@ select.input:focus,
   height: 8px;
   margin-top: 10px;
   border-radius: 999px;
-  background: #f2f4fb;
+  background: var(--bg-inset);
   overflow: hidden;
 }
 :root[data-theme="dark"] .admin-pw-meter {
@@ -1670,7 +1839,7 @@ select.input:focus,
   margin-top: 6px;
   font-size: 12.5px;
   font-weight: 600;
-  color: #10b981;
+  color: var(--positive);
 }
 .admin-field-ok svg {
   width: 15px;
@@ -1694,12 +1863,12 @@ select.input:focus,
   margin-top: 1px;
 }
 .admin-notice--info {
-  background: #deeafe;
-  color: #3b82f6;
+  background: var(--info-soft);
+  color: var(--info);
 }
 :root[data-theme="dark"] .admin-notice--info {
-  background: color-mix(in srgb, #6c8cff 16%, transparent);
-  color: #9db4ff;
+  background: var(--info-soft);
+  color: var(--info);
 }
 /* Inline persona notice ("Chỉ có tôi") sits inside the cards column — rely on the
    list's gap for spacing instead of the notice's default top margin. */
@@ -1708,9 +1877,9 @@ select.input:focus,
 }
 /* Selected/open persona card — mirrors the hover affordance. */
 .admin-persona--open {
-  border-color: #6c5ce7;
+  border-color: var(--accent);
   background: var(--bg-inset);
-  box-shadow: 0 8px 20px -12px rgba(108, 92, 231, 0.6);
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 
 /* ---------- signup wizard — members step (add employees / kids) ---------- */
@@ -1872,8 +2041,8 @@ select.input:focus,
   border: 1px solid var(--border);
 }
 .bibo-btn--secondary:hover:not(:disabled) {
-  border-color: #6c5ce7;
-  color: #6c5ce7;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .bibo-btn--secondary svg {
   width: 20px;

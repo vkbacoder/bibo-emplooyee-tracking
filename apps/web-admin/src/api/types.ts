@@ -52,6 +52,11 @@ export interface Business {
   allow_employee_override: boolean;
   screenshot_mode: string; // normalize to ScreenshotMode before comparing
   screenshot_skip_apps: string[];
+  screenshots_enabled?: boolean;
+  continuous_capture_enabled?: boolean;
+  manual_capture_enabled?: boolean;
+  policy_version?: number;
+  policy_updated_at?: string;
 }
 
 export interface BusinessSettingsPatch {
@@ -61,6 +66,77 @@ export interface BusinessSettingsPatch {
   allow_employee_override?: boolean;
   screenshot_mode?: ScreenshotMode;
   screenshot_skip_apps?: string[];
+  screenshots_enabled?: boolean;
+  continuous_capture_enabled?: boolean;
+  manual_capture_enabled?: boolean;
+}
+
+export interface EffectivePolicy {
+  employee_id: string;
+  business_id: string;
+  capture_enabled: boolean;
+  continuous_capture_enabled: boolean;
+  capture_interval_minutes: number;
+  capture_interval_seconds: number;
+  manual_capture_enabled: boolean;
+  policy_version: number;
+  policy_updated_at: string;
+  last_ack_version?: number;
+  last_ack_at?: string;
+}
+
+export interface EmployeeOverrides {
+  screenshots_enabled: boolean | null;
+  continuous_capture_enabled: boolean | null;
+  screenshot_interval_s: number | null;
+  manual_capture_enabled: boolean | null;
+  policy_version: number;
+  policy_updated_at: string;
+  last_ack_version: number | null;
+  last_ack_at: string | null;
+  last_ack_device_id: string | null;
+}
+
+export interface BusinessScreenshotDefaults {
+  screenshots_enabled: boolean;
+  continuous_capture_enabled: boolean;
+  screenshot_interval_s: number;
+  manual_capture_enabled: boolean;
+  allow_employee_override: boolean;
+  screenshot_mode: string;
+  policy_version: number;
+  policy_updated_at: string;
+}
+
+export interface EmployeePolicyDetail {
+  employee_id: string;
+  business_id: string;
+  effective: EffectivePolicy;
+  overrides: EmployeeOverrides;
+  business_defaults: BusinessScreenshotDefaults;
+}
+
+export interface EmployeePolicyPatch {
+  screenshots_enabled?: boolean | null;
+  continuous_capture_enabled?: boolean | null;
+  screenshot_interval_s?: number | null;
+  manual_capture_enabled?: boolean | null;
+}
+
+export interface ScreenshotRequest {
+  id: string;
+  business_id: string;
+  employee_id: string;
+  requested_by_user_id: string;
+  requested_by_name: string;
+  status: string;
+  policy_version: number;
+  created_at: string;
+  expires_at: string;
+  acknowledged_at?: string;
+  completed_at?: string;
+  screenshot_client_uuid?: string;
+  error_message?: string;
 }
 
 export interface Employee {

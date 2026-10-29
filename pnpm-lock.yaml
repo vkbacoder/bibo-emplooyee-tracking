@@ -95,6 +95,9 @@ importers:
 
   apps/web-admin:
     dependencies:
+      '@fontsource-variable/manrope':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@sentry/react':
         specifier: ^10.59.0
         version: 10.62.0(react@19.2.7)

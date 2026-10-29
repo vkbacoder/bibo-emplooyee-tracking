@@ -22,7 +22,10 @@
     "vsYesterday": "vs yesterday",
     "ofMembers": "of {{count}} {{members}}",
     "todayLabel": "today",
-    "newTeam": "New team"
+    "newTeam": "New team",
+    "captureNow": "Capture Now",
+    "captureTriggered": "Capture requested!",
+    "captureFailed": "Capture request failed"
   },
   "employees": {
     "newBusiness": "New business",
@@ -88,7 +91,42 @@
       "screenshots": "Screenshots"
     },
     "singleDay": "Single day",
-    "dateRange": "Date range"
+    "dateRange": "Date range",
+    "captureNow": "Capture Now",
+    "captureTriggered": "Capture request created! Waiting for desktop app to capture.",
+    "captureFailed": "Could not request screenshot.",
+    "managePolicy": "Screenshot Policy",
+    "policyModal": {
+      "title": "Screenshot Policy · {{name}}",
+      "globalOffNotice": "Global screenshot capture is currently disabled in Settings. Employee-specific controls cannot override global disablement.",
+      "captureEnabled": "Screenshot capture",
+      "continuousCapture": "Continuous capture",
+      "interval": "Screenshot interval",
+      "manualRequests": "Manual requests ('Capture Now')",
+      "inherited": "Inherit from org ({{val}})",
+      "overrideOn": "Always ON",
+      "overrideOff": "Always OFF",
+      "resetDefaults": "Reset to inherited defaults",
+      "resetSuccess": "Reset employee settings to inherited defaults.",
+      "saveSuccess": "Employee policy updated.",
+      "recentRequests": "Recent Capture Requests",
+      "noRequests": "No manual capture requests yet.",
+      "retry": "Retry",
+      "retrySuccess": "Request retried.",
+      "status": {
+        "pending": "Pending",
+        "acknowledged": "Capturing…",
+        "completed": "Completed",
+        "rejected_disabled": "Rejected (Disabled)",
+        "rejected_manual_disabled": "Rejected (Manual Disabled)",
+        "rejected_expired": "Expired",
+        "rejected_wrong_employee": "Wrong Employee",
+        "rejected_duplicate": "Duplicate",
+        "rejected_stale_policy": "Stale Policy",
+        "rejected_privacy_exclusion": "Privacy Exclusion",
+        "failed": "Failed"
+      }
+    }
   },
   "internal": {
     "title": "Messages",

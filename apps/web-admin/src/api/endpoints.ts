@@ -29,6 +29,9 @@ import type {
   ScreenshotsResponse,
   Tokens,
   User,
+  EmployeePolicyDetail,
+  EmployeePolicyPatch,
+  ScreenshotRequest,
 } from "./types";
 
 // ---------- auth ----------
@@ -169,6 +172,49 @@ export function reportScreenshots(
   return request<ScreenshotsResponse>(`/v1/reports/employees/${employeeId}/screenshots`, {
     query: { from, to, limit, offset },
   });
+}
+
+// ---------- screenshot policy & manual requests (manager) ----------
+export function getEmployeePolicy(businessId: string, employeeId: string) {
+  return request<EmployeePolicyDetail>(`/v1/businesses/${businessId}/employees/${employeeId}/policy`);
+}
+
+export function updateEmployeePolicy(businessId: string, employeeId: string, patch: EmployeePolicyPatch) {
+  return request<EmployeePolicyDetail>(`/v1/businesses/${businessId}/employees/${employeeId}/policy`, {
+    method: "PATCH",
+    body: patch,
+  });
+}
+
+export function resetEmployeePolicy(businessId: string, employeeId: string) {
+  return request<{ status: string; policy: EmployeePolicyDetail }>(
+    `/v1/businesses/${businessId}/employees/${employeeId}/policy/reset`,
+    { method: "POST" },
+  );
+}
+
+export function createScreenshotRequest(businessId: string, employeeId: string, expiryMinutes = 15) {
+  return request<ScreenshotRequest>(
+    `/v1/businesses/${businessId}/employees/${employeeId}/screenshot-requests`,
+    {
+      method: "POST",
+      body: { expiry_minutes: expiryMinutes },
+    },
+  );
+}
+
+export function listEmployeeScreenshotRequests(businessId: string, employeeId: string, limit = 20) {
+  return request<{ requests: ScreenshotRequest[] }>(
+    `/v1/businesses/${businessId}/employees/${employeeId}/screenshot-requests`,
+    { query: { limit } },
+  );
+}
+
+export function retryScreenshotRequest(businessId: string, requestId: string) {
+  return request<ScreenshotRequest>(
+    `/v1/businesses/${businessId}/screenshot-requests/${requestId}/retry`,
+    { method: "POST" },
+  );
 }
 
 // ---------- in-app messages (super admin) ----------

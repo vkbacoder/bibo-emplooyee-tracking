@@ -247,6 +247,92 @@ export function Settings() {
           <div className="set-group">
             <div className="set-row">
               <div>
+                <div className="set-title">{t("masterSwitch.title")}</div>
+                <div className="set-desc">{t("masterSwitch.desc")}</div>
+                {selected.screenshots_enabled === false && (
+                  <div style={{ color: "var(--negative)", marginTop: 6, fontSize: 13, fontWeight: 500 }}>
+                    {t("masterSwitch.offWarning")}
+                  </div>
+                )}
+              </div>
+              <div
+                className="segmented"
+                role="group"
+                aria-label={t("masterSwitch.title")}
+              >
+                <button
+                  className={selected.screenshots_enabled !== false ? "active" : ""}
+                  disabled={saving}
+                  onClick={() => savePatch({ screenshots_enabled: true }, t("masterSwitch.saved"))}
+                >
+                  {t("masterSwitch.enabled")}
+                </button>
+                <button
+                  className={selected.screenshots_enabled === false ? "active" : ""}
+                  disabled={saving}
+                  onClick={() => savePatch({ screenshots_enabled: false }, t("masterSwitch.saved"))}
+                >
+                  {t("masterSwitch.disabled")}
+                </button>
+              </div>
+            </div>
+
+            <div className="set-row">
+              <div>
+                <div className="set-title">{t("continuousCapture.title")}</div>
+                <div className="set-desc">{t("continuousCapture.desc")}</div>
+              </div>
+              <div
+                className="segmented"
+                role="group"
+                aria-label={t("continuousCapture.title")}
+              >
+                <button
+                  className={selected.continuous_capture_enabled !== false ? "active" : ""}
+                  disabled={saving || selected.screenshots_enabled === false}
+                  onClick={() => savePatch({ continuous_capture_enabled: true }, t("continuousCapture.saved"))}
+                >
+                  {t("continuousCapture.enabled")}
+                </button>
+                <button
+                  className={selected.continuous_capture_enabled === false ? "active" : ""}
+                  disabled={saving || selected.screenshots_enabled === false}
+                  onClick={() => savePatch({ continuous_capture_enabled: false }, t("continuousCapture.saved"))}
+                >
+                  {t("continuousCapture.disabled")}
+                </button>
+              </div>
+            </div>
+
+            <div className="set-row">
+              <div>
+                <div className="set-title">{t("manualCapture.title")}</div>
+                <div className="set-desc">{t("manualCapture.desc")}</div>
+              </div>
+              <div
+                className="segmented"
+                role="group"
+                aria-label={t("manualCapture.title")}
+              >
+                <button
+                  className={selected.manual_capture_enabled !== false ? "active" : ""}
+                  disabled={saving || selected.screenshots_enabled === false}
+                  onClick={() => savePatch({ manual_capture_enabled: true }, t("manualCapture.saved"))}
+                >
+                  {t("manualCapture.enabled")}
+                </button>
+                <button
+                  className={selected.manual_capture_enabled === false ? "active" : ""}
+                  disabled={saving || selected.screenshots_enabled === false}
+                  onClick={() => savePatch({ manual_capture_enabled: false }, t("manualCapture.saved"))}
+                >
+                  {t("manualCapture.disabled")}
+                </button>
+              </div>
+            </div>
+
+            <div className="set-row">
+              <div>
                 <div className="set-title">{t("capturePolicy.title")}</div>
                 <div className="set-desc">{t("capturePolicy.desc", { members: terms.many })}</div>
               </div>

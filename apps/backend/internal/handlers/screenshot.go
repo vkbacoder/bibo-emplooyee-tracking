@@ -105,6 +105,13 @@ func (h *ScreenshotHandler) Upload(c *gin.Context) {
 		return
 	}
 
+	var reqIDPtr *string
+	if reqID := c.PostForm("request_id"); reqID != "" {
+		if _, err := uuid.Parse(reqID); err == nil {
+			reqIDPtr = &reqID
+		}
+	}
+
 	row := store.ScreenshotRow{
 		ClientUUID:      clientUUID,
 		DeviceID:        deviceID,
@@ -115,11 +122,15 @@ func (h *ScreenshotHandler) Upload(c *gin.Context) {
 		Height:          optInt(c.PostForm("height")),
 		DisplayID:       optInt(c.PostForm("display_id")),
 		ClientUpdatedAt: updatedAt,
+		RequestID:       reqIDPtr,
 	}
 	if err := h.store.UpsertScreenshot(c.Request.Context(), userID, bizID, row); err != nil {
 		serverError(c, err)
 		return
 	}
+
+	// If this screenshot fulfilled a manual capture request, link and mark it completed
+	_ = h.store.LinkUploadedScreenshot(c.Request.Context(), userID, bizID, clientUUID, reqIDPtr)
 
 	c.JSON(http.StatusOK, gin.H{"accepted": []string{clientUUID}})
 }

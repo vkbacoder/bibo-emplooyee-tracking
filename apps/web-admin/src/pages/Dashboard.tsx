@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
-import { reportEmployees } from "../api/endpoints";
-import type { ReportEmployee } from "../api/types";
+import { createScreenshotRequest, reportEmployees } from "../api/endpoints";
+import { ApiError, type ReportEmployee } from "../api/types";
 import { Empty, Notice, Spinner } from "../components/ui";
 import { fmtRelative } from "../format";
 import { useBusinesses } from "../useBusinesses";
@@ -123,6 +123,29 @@ export function Dashboard() {
   const [rows, setRows] = useState<ReportEmployee[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [capturePending, setCapturePending] = useState<Record<string, boolean>>({});
+  const [captureNote, setCaptureNote] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
+
+  async function triggerCaptureNow(empId: string) {
+    if (!selectedId) return;
+    setCapturePending((prev) => ({ ...prev, [empId]: true }));
+    setCaptureNote(null);
+    try {
+      await createScreenshotRequest(selectedId, empId);
+      setCaptureNote({ id: empId, ok: true, msg: t("dashboard.captureTriggered") });
+    } catch (err) {
+      setCaptureNote({
+        id: empId,
+        ok: false,
+        msg: err instanceof ApiError ? err.message : t("dashboard.captureFailed"),
+      });
+    } finally {
+      setCapturePending((prev) => ({ ...prev, [empId]: false }));
+      setTimeout(() => {
+        setCaptureNote((current) => (current?.id === empId ? null : current));
+      }, 4000);
+    }
+  }
 
   useEffect(() => {
     if (!selectedId) {
@@ -261,14 +284,32 @@ export function Dashboard() {
                         </span>
                       </td>
                       <td className="r">
-                        <button
-                          type="button"
-                          className="admin-viewlink"
-                          onClick={() => navigate(`/employees/${e.id}?business=${selectedId}`)}
-                        >
-                          {t("dashboard.view")}
-                          {IconArrowRight}
-                        </button>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 10, justifyContent: "flex-end" }}>
+                          {captureNote?.id === e.id && (
+                            <span style={{ fontSize: 12, color: captureNote.ok ? "var(--positive)" : "var(--negative)", fontWeight: 500 }}>
+                              {captureNote.msg}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="bibo-btn bibo-btn--ghost bibo-btn--sm"
+                            title={t("dashboard.captureNow")}
+                            disabled={capturePending[e.id] || selected?.screenshots_enabled === false}
+                            onClick={() => triggerCaptureNow(e.id)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px" }}
+                          >
+                            <span style={{ display: "inline-flex", lineHeight: 0, width: 14, height: 14 }}>{IconCamera}</span>
+                            <span style={{ fontSize: 12 }}>{capturePending[e.id] ? "…" : t("dashboard.captureNow")}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-viewlink"
+                            onClick={() => navigate(`/employees/${e.id}?business=${selectedId}`)}
+                          >
+                            {t("dashboard.view")}
+                            {IconArrowRight}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
