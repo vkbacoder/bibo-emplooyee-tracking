@@ -7,6 +7,7 @@ import { useBusinesses } from "../useBusinesses";
 import { memberTerms } from "../terms";
 import { DetailHeaderContext } from "../detailHeader";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useMyAccess } from "../useMyAccess";
 
 /** Finjulia circular pulse brand logo (matches desktop). */
 function BrandLogo() {
@@ -69,6 +70,22 @@ const MessagesIcon = () => (
   <NavIcon>
     <path d="m3 11 18-5v12L3 14v-3z" />
     <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+  </NavIcon>
+);
+
+const TeamsIcon = () => (
+  <NavIcon>
+    <path d="M20 10c0-4.4-3.6-8-8-8s-8 3.6-8 8" />
+    <path d="M4 10v10" />
+    <path d="M20 10v10" />
+    <path d="M4 14h16" />
+    <path d="M4 18h16" />
+  </NavIcon>
+);
+
+const AuditIcon = () => (
+  <NavIcon>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
   </NavIcon>
 );
 
@@ -310,6 +327,7 @@ export function AppShell() {
   const { user } = useAuth();
   const { mode, setMode } = useTheme();
   const { selected } = useBusinesses();
+  const { isOwner, can } = useMyAccess();
   const terms = memberTerms(selected?.kind);
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -322,7 +340,11 @@ export function AppShell() {
   const MANAGEMENT_NAV = [
     { to: "/", label: t("nav.dashboard"), end: true, icon: <DashboardIcon /> },
     { to: "/employees", label: terms.many, end: false, icon: <MembersIcon /> },
-    { to: "/settings", label: t("nav.settings"), end: false, icon: <SettingsIcon /> },
+    { to: "/teams", label: "Teams", end: false, icon: <TeamsIcon /> },
+    ...(isOwner || can("can_view_audit_logs")
+      ? [{ to: "/audit-logs", label: "Audit Logs", end: false, icon: <AuditIcon /> }]
+      : []),
+    ...(isOwner ? [{ to: "/settings", label: t("nav.settings"), end: false, icon: <SettingsIcon /> }] : []),
   ];
 
   const SUPER_NAV = user?.is_super_admin

@@ -112,6 +112,13 @@ func (h *ScreenshotHandler) Upload(c *gin.Context) {
 		}
 	}
 
+	captureSource := strings.TrimSpace(c.PostForm("capture_source"))
+	if reqIDPtr != nil {
+		captureSource = "manual"
+	} else if captureSource != "manual" && captureSource != "automatic" && captureSource != "unknown" {
+		captureSource = "automatic"
+	}
+
 	row := store.ScreenshotRow{
 		ClientUUID:      clientUUID,
 		DeviceID:        deviceID,
@@ -123,6 +130,7 @@ func (h *ScreenshotHandler) Upload(c *gin.Context) {
 		DisplayID:       optInt(c.PostForm("display_id")),
 		ClientUpdatedAt: updatedAt,
 		RequestID:       reqIDPtr,
+		CaptureSource:   captureSource,
 	}
 	if err := h.store.UpsertScreenshot(c.Request.Context(), userID, bizID, row); err != nil {
 		serverError(c, err)
@@ -144,6 +152,8 @@ func (h *ScreenshotHandler) resolveBusiness(c *gin.Context, userID string, expli
 		c.JSON(http.StatusForbidden, gin.H{"error": "user belongs to no business"})
 	case errors.Is(err, store.ErrForbidden):
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of that business"})
+	case errors.Is(err, store.ErrSuspended):
+		c.JSON(http.StatusForbidden, gin.H{"error": "business membership suspended"})
 	case errors.Is(err, store.ErrAmbiguousBusiness):
 		badRequest(c, "multiple businesses: specify business_id")
 	case err != nil:

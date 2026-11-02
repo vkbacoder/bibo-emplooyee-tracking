@@ -51,6 +51,7 @@ func New(cfg *config.Config, st *store.Store, files *filestore.Store, ret *reten
 	messagesH := handlers.NewMessagesHandler(st, cfg.JWTSecret)
 	adminMsgH := handlers.NewAdminMessagesHandler(st)
 	policyH := handlers.NewScreenshotPolicyHandler(st)
+	orgH := handlers.NewOrgHandler(st)
 
 	// Counted installer downloads (production, when static content is served). Takes
 	// precedence over the static NoRoute fallback below.
@@ -91,6 +92,29 @@ func New(cfg *config.Config, st *store.Store, files *filestore.Store, ret *reten
 	authed.PATCH("/businesses/:id/settings", ownerH.UpdateSettings)
 	authed.POST("/businesses/:id/screenshots/cleanup", retentionH.Cleanup)
 	authed.POST("/employees", ownerH.CreateEmployee)
+
+	// Organizational hierarchy, teams, roles, delegation, and audit logs
+	authed.GET("/businesses/:id/my-access", orgH.MyAccess)
+	authed.GET("/businesses/:id/members", orgH.ListMembers)
+	authed.GET("/businesses/:id/teams", orgH.ListTeams)
+	authed.POST("/businesses/:id/teams", orgH.CreateTeam)
+	authed.GET("/businesses/:id/teams/:team_id", orgH.GetTeam)
+	authed.PATCH("/businesses/:id/teams/:team_id", orgH.UpdateTeam)
+	authed.DELETE("/businesses/:id/teams/:team_id", orgH.DeleteTeam)
+	authed.POST("/businesses/:id/teams/:team_id/members", orgH.AssignTeamMember)
+	authed.DELETE("/businesses/:id/teams/:team_id/members/:user_id", orgH.RemoveTeamMember)
+
+	authed.POST("/businesses/:id/members/:user_id/promote", orgH.PromoteMember)
+	authed.POST("/businesses/:id/members/:user_id/demote", orgH.DemoteMember)
+	authed.POST("/businesses/:id/members/:user_id/suspend", orgH.SuspendMember)
+	authed.POST("/businesses/:id/members/:user_id/reactivate", orgH.ReactivateMember)
+	authed.DELETE("/businesses/:id/members/:user_id", orgH.RemoveMember)
+
+	authed.GET("/businesses/:id/members/:user_id/permissions", orgH.ListMemberPermissions)
+	authed.POST("/businesses/:id/members/:user_id/permissions", orgH.GrantPermission)
+	authed.DELETE("/businesses/:id/members/:user_id/permissions/:permission", orgH.RevokePermission)
+
+	authed.GET("/businesses/:id/audit-logs", orgH.ListAuditLogs)
 
 	// Capture policy for the desktop (employee's org settings).
 	authed.GET("/policy", ownerH.Policy)

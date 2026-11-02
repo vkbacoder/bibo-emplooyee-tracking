@@ -137,6 +137,9 @@ func (h *SyncHandler) Batch(c *gin.Context) {
 	case errors.Is(err, store.ErrForbidden):
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of that business"})
 		return
+	case errors.Is(err, store.ErrSuspended):
+		c.JSON(http.StatusForbidden, gin.H{"error": "business membership suspended"})
+		return
 	case errors.Is(err, store.ErrAmbiguousBusiness):
 		badRequest(c, "multiple businesses: specify business_id")
 		return

@@ -60,15 +60,20 @@ func (h *ScreenshotPolicyHandler) GetScreenshotPolicy(c *gin.Context) {
 	}
 
 	bizID, err := h.store.ResolveBusinessForUser(c.Request.Context(), targetEmployeeID, nil)
-	if errors.Is(err, store.ErrNotFound) {
+	switch {
+	case errors.Is(err, store.ErrNotFound):
 		c.JSON(http.StatusForbidden, gin.H{"error": "user belongs to no business"})
 		return
-	}
-	if errors.Is(err, store.ErrAmbiguousBusiness) {
+	case errors.Is(err, store.ErrForbidden):
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of that business"})
+		return
+	case errors.Is(err, store.ErrSuspended):
+		c.JSON(http.StatusForbidden, gin.H{"error": "business membership suspended"})
+		return
+	case errors.Is(err, store.ErrAmbiguousBusiness):
 		badRequest(c, "user belongs to multiple businesses: specify business_id")
 		return
-	}
-	if err != nil {
+	case err != nil:
 		serverError(c, err)
 		return
 	}
@@ -137,7 +142,20 @@ func (h *ScreenshotPolicyHandler) AckScreenshotPolicy(c *gin.Context) {
 	}
 
 	bizID, err := h.store.ResolveBusinessForUser(c.Request.Context(), targetEmployeeID, nil)
-	if err != nil {
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		c.JSON(http.StatusForbidden, gin.H{"error": "user belongs to no business"})
+		return
+	case errors.Is(err, store.ErrForbidden):
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of that business"})
+		return
+	case errors.Is(err, store.ErrSuspended):
+		c.JSON(http.StatusForbidden, gin.H{"error": "business membership suspended"})
+		return
+	case errors.Is(err, store.ErrAmbiguousBusiness):
+		badRequest(c, "user belongs to multiple businesses: specify business_id")
+		return
+	case err != nil:
 		serverError(c, err)
 		return
 	}
