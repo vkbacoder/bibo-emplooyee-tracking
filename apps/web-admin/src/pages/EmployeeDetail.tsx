@@ -20,7 +20,7 @@ import {
 import { ActivityPanel } from "../components/reports/ActivityPanel";
 import { BrowserPanel } from "../components/reports/BrowserPanel";
 import { KeystrokePanel } from "../components/reports/KeystrokePanel";
-import { ScreenshotGallery } from "../components/reports/ScreenshotGallery";
+import { ScreenshotManagement } from "../components/ScreenshotManagement";
 import { EmployeePolicyModal } from "../components/EmployeePolicyModal";
 import { Notice, Spinner } from "../components/ui";
 import { dayRangeToUnix, fmtDuration, isoDate } from "../format";
@@ -111,7 +111,6 @@ export function EmployeeDetail() {
   // there may be more.
   const [shotsRange, setShotsRange] = useState<{ from: number; to: number } | null>(null);
   const [shotsMore, setShotsMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,20 +187,6 @@ export function EmployeeDetail() {
   useEffect(() => {
     load();
   }, [load]);
-
-  async function loadMoreShots() {
-    if (!id || !shots || !shotsRange || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const page = await reportScreenshots(id, shotsRange.from, shotsRange.to, SHOTS_PAGE, shots.length);
-      setShots([...shots, ...page.screenshots]);
-      setShotsMore(page.screenshots.length === SHOTS_PAGE);
-    } catch {
-      setError(t("detail.errorRange"));
-    } finally {
-      setLoadingMore(false);
-    }
-  }
 
   const today = isoDate(new Date());
 
@@ -380,21 +365,19 @@ export function EmployeeDetail() {
                   (activity ? <ActivityPanel data={activity} /> : <Spinner />)}
                 {/* Browser panel renders its own table card */}
                 {tab === "browser" && (visits ? <BrowserPanel visits={visits} /> : <Spinner />)}
-                {(tab === "keystrokes" || tab === "screenshots") && (
+                {tab === "keystrokes" && (
                   <div className="bibo-card bibo-card--default admin-cardpad">
-                    {tab === "keystrokes" &&
-                      (keystrokes ? <KeystrokePanel buckets={keystrokes} /> : <Spinner />)}
-                    {tab === "screenshots" &&
-                      (shots ? (
-                        <ScreenshotGallery
-                          shots={shots}
-                          onLoadMore={shotsMore ? loadMoreShots : undefined}
-                          loadingMore={loadingMore}
-                        />
-                      ) : (
-                        <Spinner />
-                      ))}
+                    {keystrokes ? <KeystrokePanel buckets={keystrokes} /> : <Spinner />}
                   </div>
+                )}
+                {tab === "screenshots" && (
+                  <ScreenshotManagement
+                    businessId={businessId || selectedBiz?.id || ""}
+                    employeeId={id}
+                    employeeName={name}
+                    from={shotsRange?.from ?? dayRangeToUnix(mode === "day" ? day : from, mode === "day" ? day : to).from}
+                    to={shotsRange?.to ?? dayRangeToUnix(mode === "day" ? day : from, mode === "day" ? day : to).to}
+                  />
                 )}
               </>
             )

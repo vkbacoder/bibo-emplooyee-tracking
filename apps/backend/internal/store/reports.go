@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -11,20 +12,43 @@ import (
 func (s *Store) IsBusinessOwner(ctx context.Context, ownerID, businessID string) (bool, error) {
 	var ok bool
 	err := s.pool.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM businesses WHERE id = $1 AND owner_user_id = $2)`,
+		`SELECT EXISTS(
+			SELECT 1 FROM businesses WHERE id = $1 AND (
+				owner_user_id = $2 OR EXISTS (
+					SELECT 1 FROM memberships WHERE business_id = $1 AND user_id = $2 AND role = 'owner'
+				)
+			)
+		)`,
 		businessID, ownerID).Scan(&ok)
 	return ok, err
 }
 
-// OwnsEmployee reports whether ownerID owns a business the employee belongs to.
+// OwnsEmployee reports whether ownerID owns or is authorized to view the employee.
 func (s *Store) OwnsEmployee(ctx context.Context, ownerID, employeeID string) (bool, error) {
+	if ownerID == employeeID {
+		return true, nil
+	}
 	var ok bool
-	// role IN ('owner','employee') so an owner can also view their own activity.
 	err := s.pool.QueryRow(ctx,
 		`SELECT EXISTS(
 		    SELECT 1 FROM memberships m
 		      JOIN businesses b ON b.id = m.business_id
-		     WHERE m.user_id = $1 AND m.role IN ('owner','employee') AND b.owner_user_id = $2)`,
+		     WHERE m.user_id = $1
+		       AND (
+		           b.owner_user_id = $2
+		           OR EXISTS (SELECT 1 FROM memberships mo WHERE mo.business_id = b.id AND mo.user_id = $2 AND mo.role = 'owner')
+		           OR (
+		               EXISTS (SELECT 1 FROM memberships ml WHERE ml.business_id = b.id AND ml.user_id = $2 AND ml.role = 'team_lead' AND ml.is_suspended = false)
+		               AND EXISTS (
+		                   WITH RECURSIVE team_tree AS (
+		                       SELECT id FROM teams WHERE business_id = b.id AND lead_user_id = $2
+		                       UNION ALL
+		                       SELECT t.id FROM teams t JOIN team_tree tt ON t.parent_team_id = tt.id WHERE t.business_id = b.id
+		                   )
+		                   SELECT 1 FROM team_members tm WHERE tm.business_id = b.id AND tm.user_id = $1 AND tm.team_id IN (SELECT id FROM team_tree)
+		               )
+		           )
+		       ))`,
 		employeeID, ownerID).Scan(&ok)
 	return ok, err
 }
@@ -35,7 +59,7 @@ type RosterEntry struct {
 	Email            string `json:"email"`
 	Username         string `json:"username"`
 	DisplayName      string `json:"display_name"`
-	Role             string `json:"role"` // 'owner' (self) | 'employee'
+	Role             string `json:"role"` // 'owner' (self) | 'team_lead' | 'employee'
 	LastSeen         *int64 `json:"last_seen"` // unix seconds (the web UI expects a number)
 	ActiveTodayS     int64  `json:"active_today_s"`
 	ActiveYesterdayS int64  `json:"active_yesterday_s"`
@@ -50,9 +74,22 @@ type RosterEntry struct {
 // Roster returns a business's employees with last-seen, active seconds and
 // screenshot/keystroke rollups for the [dayStart, dayEnd) window plus the
 // preceding day (for the dashboard's vs-yesterday deltas).
-func (s *Store) Roster(ctx context.Context, businessID string, dayStart, dayEnd int64) ([]RosterEntry, error) {
+func (s *Store) Roster(ctx context.Context, businessID string, dayStart, dayEnd int64, callerID ...string) ([]RosterEntry, error) {
 	ydayStart := dayStart - 86400
-	rows, err := s.pool.Query(ctx, `
+	var filterClause string
+	args := []any{businessID, dayStart, dayEnd, ydayStart}
+	if len(callerID) > 0 && callerID[0] != "" {
+		teamIDs, isOrgWide, err := s.GetAuthorizedTeamIDs(ctx, businessID, callerID[0])
+		if err == nil && !isOrgWide {
+			if len(teamIDs) == 0 {
+				return []RosterEntry{}, nil
+			}
+			args = append(args, teamIDs, callerID[0])
+			filterClause = fmt.Sprintf(" AND (EXISTS (SELECT 1 FROM team_members tm WHERE tm.business_id = m.business_id AND tm.user_id = m.user_id AND tm.team_id = ANY($%d)) OR m.user_id = $%d)", len(args)-1, len(args))
+		}
+	}
+
+	query := fmt.Sprintf(`
 		SELECT u.id, COALESCE(u.email, ''), COALESCE(u.username, ''), u.display_name, m.role,
 		       (SELECT extract(epoch FROM max(last_seen_at))::bigint
 		          FROM devices d WHERE d.user_id = u.id) AS last_seen,
@@ -73,8 +110,10 @@ func (s *Store) Roster(ctx context.Context, businessID string, dayStart, dayEnd 
 		           AND k.ts_bucket >= $2 AND k.ts_bucket < $3 AND k.count > 0) AS key_minutes
 		  FROM memberships m
 		  JOIN users u ON u.id = m.user_id
-		 WHERE m.business_id = $1 AND m.role IN ('owner','employee')
-		 ORDER BY (m.role = 'owner') DESC, u.display_name`, businessID, dayStart, dayEnd, ydayStart)
+		 WHERE m.business_id = $1 AND m.role IN ('owner','team_lead','employee')%s
+		 ORDER BY (m.role = 'owner') DESC, u.display_name`, filterClause)
+
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +141,23 @@ func (s *Store) Roster(ctx context.Context, businessID string, dayStart, dayEnd 
 
 // All per-employee reads are scoped to businesses the caller owns via this filter,
 // so an owner can never read another business's data.
-const ownedFilter = `business_id IN (SELECT id FROM businesses WHERE owner_user_id = $2)`
+const ownedFilter = `business_id IN (
+	SELECT id FROM businesses WHERE owner_user_id = $2
+	UNION
+	SELECT business_id FROM memberships WHERE user_id = $2 AND role = 'owner'
+	UNION
+	SELECT m.business_id FROM memberships m
+	 WHERE m.user_id = $2 AND m.role = 'team_lead' AND m.is_suspended = false
+	   AND EXISTS (
+	       WITH RECURSIVE team_tree AS (
+	           SELECT id FROM teams WHERE business_id = m.business_id AND lead_user_id = $2
+	           UNION ALL
+	           SELECT t.id FROM teams t JOIN team_tree tt ON t.parent_team_id = tt.id WHERE t.business_id = m.business_id
+	       )
+	       SELECT 1 FROM team_members tm
+	        WHERE tm.business_id = m.business_id AND tm.user_id = $1 AND tm.team_id IN (SELECT id FROM team_tree)
+	   )
+)`
 
 // ActivitySample is one app-usage interval in a report.
 type ActivitySample struct {
@@ -224,20 +279,33 @@ func (s *Store) BrowserReport(ctx context.Context, employeeID, ownerID string, f
 
 // ScreenshotMeta is screenshot metadata in a report (no bytes).
 type ScreenshotMeta struct {
-	ClientUUID string `json:"client_uuid"`
-	Ts         int64  `json:"ts"`
-	ByteSize   int    `json:"byte_size"`
-	Width      *int   `json:"width"`
-	Height     *int   `json:"height"`
-	DisplayID  *int   `json:"display_id"`
+	ClientUUID    string  `json:"client_uuid"`
+	Ts            int64   `json:"ts"`
+	ByteSize      int     `json:"byte_size"`
+	Width         *int    `json:"width"`
+	Height        *int    `json:"height"`
+	DisplayID     *int    `json:"display_id"`
+	CaptureSource string  `json:"capture_source"`
+	RequestID     *string `json:"request_id,omitempty"`
 }
 
-// ScreenshotsReport returns paginated screenshot metadata, most recent first.
-func (s *Store) ScreenshotsReport(ctx context.Context, employeeID, ownerID string, from, to int64, limit, offset int) ([]ScreenshotMeta, error) {
-	rows, err := s.pool.Query(ctx,
-		`SELECT client_uuid, ts, byte_size, width, height, display_id FROM screenshots
-		  WHERE user_id = $1 AND `+ownedFilter+` AND ts >= $3 AND ts < $4
-		  ORDER BY ts DESC LIMIT $5 OFFSET $6`, employeeID, ownerID, from, to, limit, offset)
+// ScreenshotsReport returns paginated screenshot metadata, most recent first, with optional capture source filtering.
+func (s *Store) ScreenshotsReport(ctx context.Context, employeeID, ownerID string, from, to int64, limit, offset int, source string) ([]ScreenshotMeta, error) {
+	query := `SELECT client_uuid, ts, byte_size, width, height, display_id, capture_source, request_id
+	            FROM screenshots
+	           WHERE user_id = $1 AND ` + ownedFilter + ` AND ts >= $3 AND ts < $4`
+	args := []any{employeeID, ownerID, from, to}
+
+	if source == "automatic" {
+		query += ` AND capture_source = 'automatic'`
+	} else if source == "manual" {
+		query += ` AND capture_source = 'manual'`
+	}
+
+	query += fmt.Sprintf(` ORDER BY ts DESC LIMIT $%d OFFSET $%d`, len(args)+1, len(args)+2)
+	args = append(args, limit, offset)
+
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +314,7 @@ func (s *Store) ScreenshotsReport(ctx context.Context, employeeID, ownerID strin
 	out := []ScreenshotMeta{}
 	for rows.Next() {
 		var m ScreenshotMeta
-		if err := rows.Scan(&m.ClientUUID, &m.Ts, &m.ByteSize, &m.Width, &m.Height, &m.DisplayID); err != nil {
+		if err := rows.Scan(&m.ClientUUID, &m.Ts, &m.ByteSize, &m.Width, &m.Height, &m.DisplayID, &m.CaptureSource, &m.RequestID); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
@@ -255,14 +323,37 @@ func (s *Store) ScreenshotsReport(ctx context.Context, employeeID, ownerID strin
 }
 
 // ScreenshotPathForOwner returns the stored file path for a screenshot the caller is
-// authorized to view (it belongs to a business they own). ErrNotFound otherwise — we
-// don't distinguish "missing" from "not yours", to avoid leaking existence.
+// authorized to view (it belongs to a business they own, or they are an authorized team lead/employee).
 func (s *Store) ScreenshotPathForOwner(ctx context.Context, ownerID, clientUUID string) (string, error) {
 	var path string
 	err := s.pool.QueryRow(ctx,
 		`SELECT s.file_path FROM screenshots s
 		   JOIN businesses b ON b.id = s.business_id
-		  WHERE s.client_uuid = $1 AND b.owner_user_id = $2`,
+		  WHERE s.client_uuid = $1
+		    AND (
+		        b.owner_user_id = $2
+		        OR EXISTS (SELECT 1 FROM memberships m WHERE m.business_id = b.id AND m.user_id = $2 AND m.role = 'owner')
+		        OR s.user_id = $2
+		        OR (
+		            EXISTS (
+		                SELECT 1 FROM memberships m
+		                 WHERE m.business_id = b.id AND m.user_id = $2 AND m.role = 'team_lead' AND m.is_suspended = false
+		            )
+		            AND EXISTS (
+		                SELECT 1 FROM user_permissions up
+		                 WHERE up.business_id = b.id AND up.user_id = $2 AND up.permission = 'can_view_screenshots'
+		            )
+		            AND EXISTS (
+		                WITH RECURSIVE team_tree AS (
+		                    SELECT id FROM teams WHERE business_id = b.id AND lead_user_id = $2
+		                    UNION ALL
+		                    SELECT t.id FROM teams t JOIN team_tree tt ON t.parent_team_id = tt.id WHERE t.business_id = b.id
+		                )
+		                SELECT 1 FROM team_members tm
+		                 WHERE tm.business_id = b.id AND tm.user_id = s.user_id AND tm.team_id IN (SELECT id FROM team_tree)
+		            )
+		        )
+		    )`,
 		clientUUID, ownerID).Scan(&path)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", ErrNotFound

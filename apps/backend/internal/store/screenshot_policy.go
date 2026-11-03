@@ -373,7 +373,11 @@ func (s *Store) GetPendingScreenshotRequests(ctx context.Context, employeeID str
 		       r.acknowledged_at, r.completed_at, r.screenshot_client_uuid, r.error_message
 		  FROM screenshot_requests r
 		  JOIN users u ON u.id = r.requested_by_user_id
-		 WHERE r.employee_id = $1 AND r.status = 'pending' AND r.expires_at > now()
+		  JOIN memberships m ON m.business_id = r.business_id AND m.user_id = r.employee_id
+		 WHERE r.employee_id = $1
+		   AND r.status = 'pending'
+		   AND r.expires_at > now()
+		   AND m.is_suspended = false
 		 ORDER BY r.created_at ASC`, employeeID)
 	if err != nil {
 		return nil, err
@@ -522,7 +526,7 @@ func (s *Store) AckScreenshotRequest(ctx context.Context, requestID, employeeID,
 			completedAt = &now
 			_, err = tx.Exec(ctx, `
 				UPDATE screenshots
-				   SET request_id = $1
+				   SET request_id = $1, capture_source = 'manual'
 				 WHERE client_uuid = $2 AND user_id = $3 AND business_id = $4`,
 				requestID, *scUUID, employeeID, req.BusinessID)
 			if err != nil {
@@ -613,7 +617,7 @@ func (s *Store) LinkUploadedScreenshot(ctx context.Context, employeeID, business
 		// Already completed; ensure screenshots.request_id points to req.ID
 		_, _ = tx.Exec(ctx, `
 			UPDATE screenshots
-			   SET request_id = $1
+			   SET request_id = $1, capture_source = 'manual'
 			 WHERE client_uuid = $2 AND user_id = $3 AND business_id = $4 AND (request_id IS NULL OR request_id = $1)`,
 			req.ID, clientUUID, employeeID, businessID)
 		return tx.Commit(ctx)
@@ -628,7 +632,7 @@ func (s *Store) LinkUploadedScreenshot(ctx context.Context, employeeID, business
 	// Link screenshot to request
 	_, err = tx.Exec(ctx, `
 		UPDATE screenshots
-		   SET request_id = $1
+		   SET request_id = $1, capture_source = 'manual'
 		 WHERE client_uuid = $2 AND user_id = $3 AND business_id = $4`,
 		req.ID, clientUUID, employeeID, businessID)
 	if err != nil {

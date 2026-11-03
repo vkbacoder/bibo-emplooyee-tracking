@@ -49,38 +49,54 @@ type BrowserRow struct {
 // ErrAmbiguousBusiness (the client must specify business_id).
 func (s *Store) ResolveBusinessForUser(ctx context.Context, userID string, explicit *string) (string, error) {
 	if explicit != nil {
-		member, err := s.IsMember(ctx, userID, *explicit)
+		var isSuspended bool
+		err := s.pool.QueryRow(ctx,
+			`SELECT is_suspended FROM memberships WHERE user_id = $1 AND business_id = $2`,
+			userID, *explicit,
+		).Scan(&isSuspended)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrForbidden
+		}
 		if err != nil {
 			return "", err
 		}
-		if !member {
-			return "", ErrForbidden
+		if isSuspended {
+			return "", ErrSuspended
 		}
 		return *explicit, nil
 	}
 
-	rows, err := s.pool.Query(ctx, `SELECT business_id FROM memberships WHERE user_id = $1`, userID)
+	rows, err := s.pool.Query(ctx, `SELECT business_id, is_suspended FROM memberships WHERE user_id = $1`, userID)
 	if err != nil {
 		return "", err
 	}
 	defer rows.Close()
 
-	var ids []string
+	var activeIDs []string
+	var hasSuspended bool
 	for rows.Next() {
 		var id string
-		if err := rows.Scan(&id); err != nil {
+		var isSuspended bool
+		if err := rows.Scan(&id, &isSuspended); err != nil {
 			return "", err
 		}
-		ids = append(ids, id)
+		if isSuspended {
+			hasSuspended = true
+		} else {
+			activeIDs = append(activeIDs, id)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return "", err
 	}
-	switch len(ids) {
+	switch len(activeIDs) {
 	case 0:
+		if hasSuspended {
+			return "", ErrSuspended
+		}
 		return "", ErrNotFound
 	case 1:
-		return ids[0], nil
+		return activeIDs[0], nil
 	default:
 		return "", ErrAmbiguousBusiness
 	}

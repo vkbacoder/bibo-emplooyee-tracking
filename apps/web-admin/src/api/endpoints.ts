@@ -32,6 +32,19 @@ import type {
   EmployeePolicyDetail,
   EmployeePolicyPatch,
   ScreenshotRequest,
+  CreateTeamReq,
+  DemoteMemberReq,
+  GrantPermissionReq,
+  MyAccess,
+  OrgAuditLog,
+  OrgMember,
+  PromoteMemberReq,
+  RemoveMemberReq,
+  SuspendMemberReq,
+  Team,
+  TeamWithDetails,
+  UpdateTeamReq,
+  UserPermission,
 } from "./types";
 
 // ---------- auth ----------
@@ -167,10 +180,15 @@ export function reportScreenshots(
   to: number,
   limit = 60,
   offset = 0,
+  source?: string,
 ) {
   if (isDemo()) return Promise.resolve(demoScreenshots(employeeId));
+  const query: Record<string, string | number> = { from, to, limit, offset };
+  if (source) {
+    query.source = source;
+  }
   return request<ScreenshotsResponse>(`/v1/reports/employees/${employeeId}/screenshots`, {
-    query: { from, to, limit, offset },
+    query,
   });
 }
 
@@ -237,4 +255,112 @@ export function adminDeleteMessage(id: string) {
 }
 export function adminMessageStats(id: string) {
   return request<MessageStats>(`/v1/admin/messages/${encodeURIComponent(id)}/stats`);
+}
+
+// ---------- Organizational Hierarchy & RBAC ----------
+
+export function getMyAccess(businessId: string) {
+  return request<MyAccess>(`/v1/businesses/${businessId}/my-access`);
+}
+
+export function listOrgMembers(businessId: string) {
+  return request<{ members: OrgMember[] }>(`/v1/businesses/${businessId}/members`);
+}
+
+export function listTeams(businessId: string) {
+  return request<{ teams: TeamWithDetails[] }>(`/v1/businesses/${businessId}/teams`);
+}
+
+export function createTeam(businessId: string, req: CreateTeamReq) {
+  return request<Team>(`/v1/businesses/${businessId}/teams`, {
+    method: "POST",
+    body: req,
+  });
+}
+
+export function getTeam(businessId: string, teamId: string) {
+  return request<Team>(`/v1/businesses/${businessId}/teams/${teamId}`);
+}
+
+export function updateTeam(businessId: string, teamId: string, req: UpdateTeamReq) {
+  return request<Team>(`/v1/businesses/${businessId}/teams/${teamId}`, {
+    method: "PATCH",
+    body: req,
+  });
+}
+
+export function deleteTeam(businessId: string, teamId: string) {
+  return request<{ status: string }>(`/v1/businesses/${businessId}/teams/${teamId}`, {
+    method: "DELETE",
+  });
+}
+
+export function assignTeamMember(businessId: string, teamId: string, userId: string) {
+  return request<{ status: string }>(`/v1/businesses/${businessId}/teams/${teamId}/members`, {
+    method: "POST",
+    body: { user_id: userId },
+  });
+}
+
+export function removeTeamMember(businessId: string, teamId: string, userId: string) {
+  return request<{ status: string }>(`/v1/businesses/${businessId}/teams/${teamId}/members/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+export function promoteMember(businessId: string, userId: string, req: PromoteMemberReq) {
+  return request<{ status: string }>(`/v1/businesses/${businessId}/members/${userId}/promote`, {
+    method: "POST",
+    body: req,
+  });
+}
+
+export function demoteMember(businessId: string, userId: string, req: DemoteMemberReq) {
+  return request<{ status: string }>(`/v1/businesses/${businessId}/members/${userId}/demote`, {
+    method: "POST",
+    body: req,
+  });
+}
+
+export function suspendMember(businessId: string, userId: string, req: SuspendMemberReq) {
+  return request<{ status: string; is_suspended: boolean }>(`/v1/businesses/${businessId}/members/${userId}/suspend`, {
+    method: "POST",
+    body: req,
+  });
+}
+
+export function reactivateMember(businessId: string, userId: string) {
+  return request<{ status: string; is_suspended: boolean }>(`/v1/businesses/${businessId}/members/${userId}/reactivate`, {
+    method: "POST",
+  });
+}
+
+export function removeMember(businessId: string, userId: string, req: RemoveMemberReq) {
+  return request<{ status: string }>(`/v1/businesses/${businessId}/members/${userId}`, {
+    method: "DELETE",
+    body: req,
+  });
+}
+
+export function listMemberPermissions(businessId: string, userId: string) {
+  return request<{ permissions: UserPermission[] }>(`/v1/businesses/${businessId}/members/${userId}/permissions`);
+}
+
+export function grantPermission(businessId: string, userId: string, req: GrantPermissionReq) {
+  return request<{ status: string }>(`/v1/businesses/${businessId}/members/${userId}/permissions`, {
+    method: "POST",
+    body: req,
+  });
+}
+
+export function revokePermission(businessId: string, userId: string, permission: string) {
+  return request<{ status: string }>(`/v1/businesses/${businessId}/members/${userId}/permissions/${permission}`, {
+    method: "DELETE",
+  });
+}
+
+export function listOrgAuditLogs(businessId: string, limit = 50, offset = 0) {
+  return request<{ logs: OrgAuditLog[] }>(`/v1/businesses/${businessId}/audit-logs`, {
+    query: { limit, offset },
+  });
 }

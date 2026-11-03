@@ -189,6 +189,7 @@ export function demoScreenshots(employeeId: string): ScreenshotsResponse {
     width: 2560,
     height: 1440,
     display_id: 0,
+    capture_source: i % 5 === 0 ? ("manual" as const) : ("automatic" as const),
     app: SHOT_APPS[i % SHOT_APPS.length],
   }));
   return { screenshots, limit: 60, offset: 0 };

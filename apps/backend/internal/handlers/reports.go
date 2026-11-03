@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"ctracking/backend/internal/auth"
@@ -24,23 +25,37 @@ func NewReportsHandler(s *store.Store, files *filestore.Store) *ReportsHandler {
 	return &ReportsHandler{store: s, files: files}
 }
 
-// Roster returns the employee roster for a business the caller owns.
+// Roster returns the employee roster for a business the caller owns or is authorized to view.
 // Query: business_id (required), day_start (optional, unix seconds).
 func (h *ReportsHandler) Roster(c *gin.Context) {
-	ownerID, _ := auth.UserID(c)
+	callerID, _ := auth.UserID(c)
 	businessID := c.Query("business_id")
 	if businessID == "" {
 		badRequest(c, "business_id is required")
 		return
 	}
-	owns, err := h.store.IsBusinessOwner(c.Request.Context(), ownerID, businessID)
+	role, isSuspended, err := h.store.GetMemberRole(c.Request.Context(), businessID, callerID)
+	if errors.Is(err, store.ErrNotFound) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this business"})
+		return
+	}
 	if err != nil {
 		serverError(c, err)
 		return
 	}
-	if !owns {
-		c.JSON(http.StatusForbidden, gin.H{"error": "not your business"})
+	if isSuspended {
+		c.JSON(http.StatusForbidden, gin.H{"error": "business membership suspended"})
 		return
+	}
+	if role != "owner" {
+		hasPerm, _ := h.store.HasPermission(c.Request.Context(), businessID, callerID, "can_view_reports")
+		if !hasPerm {
+			hasPerm, _ = h.store.HasPermission(c.Request.Context(), businessID, callerID, "can_view_team")
+		}
+		if !hasPerm {
+			c.JSON(http.StatusForbidden, gin.H{"error": "missing permission to view reports"})
+			return
+		}
 	}
 
 	// "Today" is [day_start, +24h). Clients pass their local midnight as
@@ -49,7 +64,7 @@ func (h *ReportsHandler) Roster(c *gin.Context) {
 	now := time.Now().UTC()
 	dayStart := parseInt64(c.Query("day_start"),
 		time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).Unix())
-	roster, err := h.store.Roster(c.Request.Context(), businessID, dayStart, dayStart+86400)
+	roster, err := h.store.Roster(c.Request.Context(), businessID, dayStart, dayStart+86400, callerID)
 	if err != nil {
 		serverError(c, err)
 		return
@@ -107,7 +122,8 @@ func (h *ReportsHandler) Screenshots(c *gin.Context) {
 	}
 	limit := clampInt(c.Query("limit"), 50, 1, 200)
 	offset := clampInt(c.Query("offset"), 0, 0, 1<<31)
-	shots, err := h.store.ScreenshotsReport(c.Request.Context(), empID, ownerID, from, to, limit, offset)
+	source := strings.TrimSpace(c.Query("source"))
+	shots, err := h.store.ScreenshotsReport(c.Request.Context(), empID, ownerID, from, to, limit, offset, source)
 	if err != nil {
 		serverError(c, err)
 		return

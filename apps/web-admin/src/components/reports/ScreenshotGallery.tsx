@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { fetchImageObjectUrl } from "../../api/client";
@@ -10,7 +10,7 @@ import { Empty, Spinner } from "../ui";
 type ShotMeta = ScreenshotMeta & { app?: string };
 
 // Per-app placeholder gradient shown until the real thumbnail loads (or if the
-// image is unavailable). Colours mirror the offline design.
+// image is unavailable).
 const APP_GRADIENTS: Record<string, [string, string]> = {
   "VS Code": ["#6c5ce7", "#3a2f87"],
   Chrome: ["#38bdf8", "#1f6f9c"],
@@ -33,88 +33,175 @@ const hhmmss = (ts: number) => {
     .join(":");
 };
 
+const fullDateTime = (ts: number) => {
+  return new Date(ts * 1000).toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+const svg = (children: ReactNode, size = 20) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {children}
+  </svg>
+);
+
+const IconX = svg(<path d="M18 6 6 18M6 6l12 12" />, 20);
+const IconChevronLeft = svg(<path d="m15 18-6-6 6-6" />, 24);
+const IconChevronRight = svg(<path d="m9 18 6-6-6-6" />, 24);
+const IconRotate = svg(<><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></>, 14);
+const IconAlert = svg(<><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></>, 28);
+
 // One gallery card: real thumbnail when it loads, gradient placeholder before.
-function Shot({ meta, onOpen }: { meta: ShotMeta; onOpen: () => void }) {
+function Shot({
+  meta,
+  employeeName,
+  onOpen,
+}: {
+  meta: ShotMeta;
+  employeeName?: string;
+  onOpen: () => void;
+}) {
   const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let alive = true;
     let made: string | null = null;
+    setError(false);
     fetchImageObjectUrl(meta.client_uuid)
       .then((u) => {
         made = u;
         if (alive) setUrl(u);
         else URL.revokeObjectURL(u);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (alive) setError(true);
+      });
     return () => {
       alive = false;
       if (made) URL.revokeObjectURL(made);
     };
   }, [meta.client_uuid]);
 
+  const isManual = meta.capture_source === "manual" || !!meta.request_id;
+
   return (
-    <div className={`admin-shot${url ? " admin-shot--clickable" : ""}`} onClick={url ? onOpen : undefined}>
+    <div
+      className={`admin-shot${url ? " admin-shot--clickable" : ""}`}
+      onClick={url ? onOpen : undefined}
+      title={
+        employeeName
+          ? `${employeeName} · ${hhmmss(meta.ts)} (Click to view full)`
+          : `Click to view full screenshot (${hhmmss(meta.ts)})`
+      }
+    >
       <div
         className="admin-shot__img"
         style={url ? { backgroundImage: `url("${url}")` } : { background: gradientFor(meta.app) }}
       />
       <div className="admin-shot__veil" />
+
+      {/* Source Badge */}
+      <span className={`admin-shot__badge ${isManual ? "admin-shot__badge--manual" : "admin-shot__badge--auto"}`}>
+        {isManual ? "MANUAL" : "AUTO"}
+      </span>
+
+      {/* App Badge */}
       {meta.app && <span className="admin-shot__app">{meta.app}</span>}
+
+      {/* Timestamp */}
       <span className="admin-shot__t">{hhmmss(meta.ts)}</span>
+
+      {/* Request ID snippet if manual */}
+      {isManual && meta.request_id && (
+        <span className="admin-shot__reqid" title={`Request: ${meta.request_id}`}>
+          #{meta.request_id.slice(0, 6)}
+        </span>
+      )}
+
+      {error && !url && (
+        <span
+          style={{
+            position: "absolute",
+            bottom: 10,
+            right: 10,
+            fontSize: 10,
+            background: "rgba(220, 38, 38, 0.8)",
+            color: "#fff",
+            padding: "2px 6px",
+            borderRadius: 4,
+          }}
+        >
+          Image offline
+        </span>
+      )}
     </div>
   );
 }
 
-const IconX = (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 6 6 18M6 6l12 12" />
-  </svg>
-);
-const IconChevronLeft = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="m15 18-6-6 6-6" />
-  </svg>
-);
-const IconChevronRight = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="m9 18 6-6-6-6" />
-  </svg>
-);
-
-// Fullscreen lightbox with prev/next/close. Rendered through a portal onto
-// <body> so `position: fixed` centers in the VIEWPORT — inside the panel
-// subtree an ancestor's transform/filter would re-anchor it to the card.
-// The full-size image is fetched fresh per shot (its own auth blob).
+// Fullscreen lightbox with prev/next/close.
 function Lightbox({
   shots,
   index,
+  employeeName,
   onIndex,
   onClose,
 }: {
   shots: ScreenshotMeta[];
   index: number;
+  employeeName?: string;
   onIndex: (i: number) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation("reports");
   const meta = shots[index];
   const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<string | null>(null);
+
   const hasPrev = index > 0;
   const hasNext = index < shots.length - 1;
+  const isManual = meta.capture_source === "manual" || !!meta.request_id;
 
-  useEffect(() => {
+  const loadImage = () => {
     let alive = true;
+    setLoading(true);
+    setError(null);
     setUrl(null);
+
     fetchImageObjectUrl(meta.client_uuid)
       .then((u) => {
         if (ref.current) URL.revokeObjectURL(ref.current);
         ref.current = u;
-        if (alive) setUrl(u);
-        else URL.revokeObjectURL(u);
+        if (alive) {
+          setUrl(u);
+          setLoading(false);
+        } else {
+          URL.revokeObjectURL(u);
+        }
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (alive) {
+          setLoading(false);
+          setError(err instanceof Error ? err.message : "Failed to load screenshot");
+        }
+      });
+
     return () => {
       alive = false;
       if (ref.current) {
@@ -122,6 +209,10 @@ function Lightbox({
         ref.current = null;
       }
     };
+  };
+
+  useEffect(() => {
+    return loadImage();
   }, [meta.client_uuid]);
 
   useEffect(() => {
@@ -135,10 +226,31 @@ function Lightbox({
   }, [index, hasPrev, hasNext, onIndex, onClose]);
 
   return createPortal(
-    <div className="admin-lightbox" onClick={onClose}>
-      <button type="button" className="admin-lightbox__btn admin-lightbox__close" aria-label={t("screenshots.close")} onClick={onClose}>
+    <div className="admin-lightbox" onClick={onClose} role="dialog" aria-modal="true">
+      {/* Top Header */}
+      <div className="admin-lightbox__header" onClick={(e) => e.stopPropagation()}>
+        <span className="admin-lightbox__title">
+          Screenshot {index + 1} of {shots.length}
+        </span>
+        <span className={`admin-lightbox__badge ${isManual ? "admin-lightbox__badge--manual" : "admin-lightbox__badge--auto"}`}>
+          {isManual ? "Manual Request" : "Automatic Continuous"}
+        </span>
+        {isManual && meta.request_id && (
+          <span style={{ fontSize: 12, opacity: 0.8, fontFamily: "monospace" }}>
+            ID: {meta.request_id}
+          </span>
+        )}
+      </div>
+
+      <button
+        type="button"
+        className="admin-lightbox__btn admin-lightbox__close"
+        aria-label={t("screenshots.close")}
+        onClick={onClose}
+      >
         {IconX}
       </button>
+
       {hasPrev && (
         <button
           type="button"
@@ -152,6 +264,7 @@ function Lightbox({
           {IconChevronLeft}
         </button>
       )}
+
       {hasNext && (
         <button
           type="button"
@@ -165,19 +278,46 @@ function Lightbox({
           {IconChevronRight}
         </button>
       )}
+
+      {/* Main Image Body */}
       <figure className="admin-lightbox__body" onClick={(e) => e.stopPropagation()}>
-        {url ? (
+        {loading && <Spinner label={t("screenshots.loading")} />}
+
+        {error && !loading && (
+          <div className="admin-lightbox__error">
+            {IconAlert}
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
+                Unable to display screenshot
+              </div>
+              <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 12 }}>{error}</div>
+              <button
+                type="button"
+                className="bibo-btn bibo-btn--secondary bibo-btn--sm"
+                onClick={loadImage}
+              >
+                Retry Loading
+              </button>
+            </div>
+          </div>
+        )}
+
+        {url && !loading && (
           <img
             className="admin-lightbox__img"
             src={url}
             alt={t("screenshots.alt", { time: fmtTime(meta.ts) })}
           />
-        ) : (
-          <Spinner label={t("screenshots.loading")} />
         )}
-        <figcaption className="admin-lightbox__caption num">
-          {index + 1} / {shots.length} · {fmtTime(meta.ts)} · {meta.width}×{meta.height} ·{" "}
-          {t("screenshots.display", { id: meta.display_id })} · {fmtBytes(meta.byte_size)}
+
+        <figcaption className="admin-lightbox__caption">
+          <span>🕒 {fullDateTime(meta.ts)}</span>
+          {meta.width && meta.height && (
+            <span>📐 {meta.width} × {meta.height}</span>
+          )}
+          <span>🖥️ {t("screenshots.display", { id: meta.display_id ?? 0 })}</span>
+          <span>📦 {fmtBytes(meta.byte_size)}</span>
+          {employeeName && <span>👤 {employeeName}</span>}
         </figcaption>
       </figure>
     </div>,
@@ -187,39 +327,102 @@ function Lightbox({
 
 export function ScreenshotGallery({
   shots,
+  title,
+  subtitle,
+  sourceType,
+  employeeName,
+  onRefresh,
+  refreshing,
   onLoadMore,
   loadingMore,
+  emptyMessage,
 }: {
   shots: ScreenshotMeta[];
-  /** Set when more screenshots exist in the range. */
+  title?: string;
+  subtitle?: string;
+  sourceType?: "automatic" | "manual";
+  employeeName?: string;
+  onRefresh?: () => void;
+  refreshing?: boolean;
   onLoadMore?: () => void;
   loadingMore?: boolean;
+  emptyMessage?: string;
 }) {
   const { t } = useTranslation("reports");
   const [active, setActive] = useState<number | null>(null);
 
-  if (shots.length === 0) return <Empty>{t("screenshots.empty")}</Empty>;
-
   return (
-    <>
-      <div className="admin-panelhead">
-        <div className="admin-paneltitle">{t("screenshots.title")}</div>
+    <div className={`admin-gallery-wrap admin-gallery-wrap--${sourceType || "all"}`}>
+      <div
+        className="admin-panelhead"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <div className="admin-paneltitle" style={{ fontSize: 16, fontWeight: 700 }}>
+            {title || t("screenshots.title")} ({shots.length})
+          </div>
+          {subtitle && (
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              {subtitle}
+            </div>
+          )}
+        </div>
+        {onRefresh && (
+          <button
+            type="button"
+            className="bibo-btn bibo-btn--secondary bibo-btn--sm"
+            onClick={onRefresh}
+            disabled={refreshing}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <span style={{ display: "inline-flex", lineHeight: 0 }}>{IconRotate}</span>
+            <span>{refreshing ? "Refreshing…" : "Refresh"}</span>
+          </button>
+        )}
       </div>
-      <div className="admin-gallery">
-        {shots.map((s, i) => (
-          <Shot key={s.client_uuid} meta={s as ShotMeta} onOpen={() => setActive(i)} />
-        ))}
-      </div>
+
+      {shots.length === 0 ? (
+        <Empty>{emptyMessage || t("screenshots.empty")}</Empty>
+      ) : (
+        <div className="admin-gallery">
+          {shots.map((s, i) => (
+            <Shot
+              key={s.client_uuid}
+              meta={s as ShotMeta}
+              employeeName={employeeName}
+              onOpen={() => setActive(i)}
+            />
+          ))}
+        </div>
+      )}
+
       {onLoadMore && (
         <div className="admin-gallery__more">
-          <button type="button" className="bibo-btn bibo-btn--secondary" onClick={onLoadMore} disabled={loadingMore}>
+          <button
+            type="button"
+            className="bibo-btn bibo-btn--secondary"
+            onClick={onLoadMore}
+            disabled={loadingMore}
+          >
             {loadingMore ? t("screenshots.loading") : t("screenshots.loadMore")}
           </button>
         </div>
       )}
-      {active != null && (
-        <Lightbox shots={shots} index={active} onIndex={setActive} onClose={() => setActive(null)} />
+
+      {active != null && shots[active] && (
+        <Lightbox
+          shots={shots}
+          index={active}
+          employeeName={employeeName}
+          onIndex={setActive}
+          onClose={() => setActive(null)}
+        />
       )}
-    </>
+    </div>
   );
 }

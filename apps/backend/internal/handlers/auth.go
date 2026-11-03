@@ -116,13 +116,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	if req.BusinessID != "" {
-		member, err := h.store.IsMember(c.Request.Context(), u.ID, req.BusinessID)
+		_, isSuspended, err := h.store.GetMemberRole(c.Request.Context(), req.BusinessID, u.ID)
+		if errors.Is(err, store.ErrNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "not a member of that business"})
+			return
+		}
 		if err != nil {
 			serverError(c, err)
 			return
 		}
-		if !member {
-			c.JSON(http.StatusForbidden, gin.H{"error": "not a member of that business"})
+		if isSuspended {
+			c.JSON(http.StatusForbidden, gin.H{"error": "business membership suspended"})
 			return
 		}
 	}

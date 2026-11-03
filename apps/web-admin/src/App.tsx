@@ -7,6 +7,8 @@ import { ThemeProvider } from "./theme/ThemeProvider";
 import { Dashboard } from "./pages/Dashboard";
 import { EmployeeDetail } from "./pages/EmployeeDetail";
 import { Employees } from "./pages/Employees";
+import { Teams } from "./pages/Teams";
+import { AuditLogs } from "./pages/AuditLogs";
 import { SignIn } from "./auth/SignIn";
 import { SignupWizard } from "./auth/SignupWizard";
 import { Settings } from "./pages/Settings";
@@ -34,6 +36,8 @@ export default function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="employees" element={<Employees />} />
                 <Route path="employees/:id" element={<EmployeeDetail />} />
+                <Route path="teams" element={<Teams />} />
+                <Route path="audit-logs" element={<AuditLogs />} />
                 <Route path="settings" element={<Settings />} />
                 <Route element={<SuperAdminRoute />}>
                   <Route path="internal/messages" element={<MessagesAdmin />} />

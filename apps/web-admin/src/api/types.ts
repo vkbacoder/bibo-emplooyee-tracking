@@ -200,9 +200,13 @@ export interface ScreenshotMeta {
   client_uuid: string;
   ts: number;
   byte_size: number;
-  width: number;
-  height: number;
-  display_id: number;
+  width: number | null;
+  height: number | null;
+  display_id: number | null;
+  capture_source?: "automatic" | "manual" | "unknown";
+  request_id?: string | null;
+  employee_name?: string;
+  device_id?: string;
 }
 
 export interface ScreenshotsResponse {
@@ -299,4 +303,134 @@ export interface MessageStats {
   message?: MessageDef;
   responses?: MessageResponseRow[];
   summary?: MessageFieldSummary[];
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Organizational Hierarchy & Role-Based Access Control (RBAC)
+// ─────────────────────────────────────────────────────────────────────
+
+export type OrgRole = "owner" | "team_lead" | "employee";
+
+export type RbacPermission =
+  | "can_view_team"
+  | "can_manage_employees"
+  | "can_create_team_leads"
+  | "can_assign_employees"
+  | "can_manage_screenshot_policy"
+  | "can_view_screenshots"
+  | "can_view_reports"
+  | "can_manage_team"
+  | "can_view_audit_logs";
+
+export interface Team {
+  id: string;
+  business_id: string;
+  name: string;
+  description: string | null;
+  lead_user_id: string | null;
+  parent_team_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamWithDetails extends Team {
+  lead_display_name?: string | null;
+  lead_email?: string | null;
+  parent_team_name?: string | null;
+  member_count: number;
+  subteam_count: number;
+}
+
+export interface TeamMember {
+  id: string;
+  business_id: string;
+  team_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface OrgMember {
+  user_id: string;
+  email: string;
+  username: string;
+  display_name: string;
+  role: OrgRole;
+  is_suspended: boolean;
+  team_id?: string | null;
+  team_name?: string | null;
+  is_team_lead: boolean;
+  led_team_ids?: string[];
+  created_at: string;
+}
+
+export interface UserPermission {
+  id: string;
+  business_id: string;
+  user_id: string;
+  permission: RbacPermission;
+  delegable: boolean;
+  granted_by_user_id?: string | null;
+  created_at: string;
+}
+
+export interface MyAccess {
+  role: OrgRole;
+  is_suspended: boolean;
+  is_org_wide: boolean;
+  authorized_team_ids: string[];
+  permissions: RbacPermission[];
+  user_permissions: UserPermission[];
+}
+
+export interface OrgAuditLog {
+  id: string;
+  business_id: string;
+  actor_user_id?: string | null;
+  actor_email?: string | null;
+  actor_display_name?: string | null;
+  target_user_id?: string | null;
+  target_email?: string | null;
+  target_display_name?: string | null;
+  target_team_id?: string | null;
+  target_team_name?: string | null;
+  action: string;
+  details: Record<string, any>;
+  created_at: string;
+}
+
+export interface CreateTeamReq {
+  name: string;
+  description?: string;
+  lead_user_id?: string;
+  parent_team_id?: string;
+}
+
+export interface UpdateTeamReq {
+  name: string;
+  description?: string;
+  lead_user_id?: string;
+  parent_team_id?: string;
+}
+
+export interface PromoteMemberReq {
+  team_id?: string;
+  permissions?: RbacPermission[];
+}
+
+export interface DemoteMemberReq {
+  replacement_lead_id?: string;
+}
+
+export interface SuspendMemberReq {
+  replacement_lead_id?: string;
+}
+
+export interface RemoveMemberReq {
+  replacement_lead_id?: string;
+  allow_unassigned_teams?: boolean;
+}
+
+export interface GrantPermissionReq {
+  permission: RbacPermission;
+  delegable?: boolean;
 }
