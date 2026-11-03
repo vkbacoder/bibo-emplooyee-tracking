@@ -101,6 +101,7 @@ func New(cfg *config.Config, st *store.Store, files *filestore.Store, ret *reten
 	authed.GET("/businesses/:id/teams/:team_id", orgH.GetTeam)
 	authed.PATCH("/businesses/:id/teams/:team_id", orgH.UpdateTeam)
 	authed.DELETE("/businesses/:id/teams/:team_id", orgH.DeleteTeam)
+	authed.GET("/businesses/:id/teams/:team_id/members", orgH.ListTeamMembers)
 	authed.POST("/businesses/:id/teams/:team_id/members", orgH.AssignTeamMember)
 	authed.DELETE("/businesses/:id/teams/:team_id/members/:user_id", orgH.RemoveTeamMember)
 

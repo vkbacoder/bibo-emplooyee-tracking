@@ -274,6 +274,32 @@ func (h *OrgHandler) DeleteTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
+// ListTeamMembers returns all members belonging to the specified team within caller's scope.
+func (h *OrgHandler) ListTeamMembers(c *gin.Context) {
+	callerID, _ := auth.UserID(c)
+	businessID := c.Param("id")
+	teamID := c.Param("team_id")
+
+	if _, ok := h.requireRole(c, businessID, "owner", "team_lead"); !ok {
+		return
+	}
+
+	members, err := h.store.ListOrgMembers(c.Request.Context(), businessID, callerID)
+	if err != nil {
+		serverError(c, err)
+		return
+	}
+
+	teamMembers := make([]store.OrgMember, 0)
+	for _, m := range members {
+		if m.TeamID != nil && *m.TeamID == teamID {
+			teamMembers = append(teamMembers, m)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"members": teamMembers})
+}
+
 type assignMemberReq struct {
 	UserID string `json:"user_id"`
 }

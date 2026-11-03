@@ -42,6 +42,7 @@ func setupTestRouter(st *store.Store, authMgr *auth.Manager) *gin.Engine {
 			org.GET("/teams/:team_id", orgH.GetTeam)
 			org.PUT("/teams/:team_id", orgH.UpdateTeam)
 			org.DELETE("/teams/:team_id", orgH.DeleteTeam)
+			org.GET("/teams/:team_id/members", orgH.ListTeamMembers)
 			org.POST("/teams/:team_id/members", orgH.AssignTeamMember)
 			org.DELETE("/teams/:team_id/members/:user_id", orgH.RemoveTeamMember)
 
@@ -240,5 +241,37 @@ func TestHttpAuthorizationSecurity(t *testing.T) {
 			t.Fatalf("suspended member AckScreenshotPolicy should return 403 Forbidden, got %d: %s", recAck.Code, recAck.Body.String())
 		}
 		t.Log("PASS: Suspended member GetScreenshotPolicy and AckScreenshotPolicy return 403 Forbidden")
+	})
+
+	// 10. Team member listing authorization and scoping
+	t.Run("TeamMembers_ListingAuthorization", func(t *testing.T) {
+		// Create a team in Biz A
+		team, err := st.CreateTeam(ctx, bizA, "Engineering", nil, &leadA, nil, ownerA)
+		if err != nil {
+			t.Fatalf("create test team: %v", err)
+		}
+		// Assign empA to the team
+		if err := st.AssignMemberToTeam(ctx, bizA, team.ID, empA, ownerA); err != nil {
+			t.Fatalf("assign member: %v", err)
+		}
+
+		// Owner can list team members
+		recOwner := makeReq("GET", fmt.Sprintf("/v1/org/businesses/%s/teams/%s/members", bizA, team.ID), ownerA, nil)
+		if recOwner.Code != http.StatusOK {
+			t.Fatalf("owner list team members should return 200, got %d: %s", recOwner.Code, recOwner.Body.String())
+		}
+
+		// Employee from same business cannot list team members directly (requires owner or team_lead role)
+		recEmp := makeReq("GET", fmt.Sprintf("/v1/org/businesses/%s/teams/%s/members", bizA, team.ID), empA, nil)
+		if recEmp.Code != http.StatusForbidden {
+			t.Fatalf("employee list team members should return 403, got %d", recEmp.Code)
+		}
+
+		// Cross-business owner (ownerB) cannot list team members of bizA
+		recCross := makeReq("GET", fmt.Sprintf("/v1/org/businesses/%s/teams/%s/members", bizA, team.ID), ownerB, nil)
+		if recCross.Code != http.StatusForbidden {
+			t.Fatalf("cross-business owner list team members should return 403, got %d", recCross.Code)
+		}
+		t.Log("PASS: Team member listing authorization enforces role and business scoping")
 	})
 }
