@@ -48,9 +48,66 @@ func (s *Store) OwnsEmployee(ctx context.Context, ownerID, employeeID string) (b
 		                   SELECT 1 FROM team_members tm WHERE tm.business_id = b.id AND tm.user_id = $1 AND tm.team_id IN (SELECT id FROM team_tree)
 		               )
 		           )
+		           OR (
+		               EXISTS (SELECT 1 FROM memberships mh WHERE mh.business_id = b.id AND mh.user_id = $2 AND mh.is_suspended = false)
+		               AND EXISTS (
+		                   SELECT 1 FROM user_permissions up
+		                    WHERE up.business_id = b.id AND up.user_id = $2 AND up.permission IN ('can_view_reports', 'can_manage_employees', 'can_view_team')
+		               )
+		           )
 		       ))`,
 		employeeID, ownerID).Scan(&ok)
 	return ok, err
+}
+
+// CanViewEmployeeScreenshots checks whether callerID is authorized to view employeeID's screenshots.
+func (s *Store) CanViewEmployeeScreenshots(ctx context.Context, callerID, employeeID string) (bool, error) {
+	if callerID == employeeID {
+		var isTL bool
+		err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM memberships WHERE user_id = $1 AND role = 'team_lead')`, callerID).Scan(&isTL)
+		if err != nil {
+			return false, err
+		}
+		if isTL {
+			// Team lead cannot view own screenshots through team monitoring
+			return false, nil
+		}
+	}
+
+	var allowed bool
+	err := s.pool.QueryRow(ctx,
+		`SELECT EXISTS(
+		    SELECT 1 FROM memberships m
+		      JOIN businesses b ON b.id = m.business_id
+		     WHERE m.user_id = $1
+		       AND (
+		           b.owner_user_id = $2
+		           OR EXISTS (SELECT 1 FROM memberships mo WHERE mo.business_id = b.id AND mo.user_id = $2 AND mo.role = 'owner')
+		           OR (
+		               $1 != $2
+		               AND EXISTS (SELECT 1 FROM memberships ml WHERE ml.business_id = b.id AND ml.user_id = $2 AND ml.role = 'team_lead' AND ml.is_suspended = false)
+		               AND EXISTS (
+		                   SELECT 1 FROM user_permissions up WHERE up.business_id = b.id AND up.user_id = $2 AND up.permission = 'can_view_screenshots'
+		               )
+		               AND EXISTS (
+		                   WITH RECURSIVE team_tree AS (
+		                       SELECT id FROM teams WHERE business_id = b.id AND lead_user_id = $2
+		                       UNION ALL
+		                       SELECT t.id FROM teams t JOIN team_tree tt ON t.parent_team_id = tt.id WHERE t.business_id = b.id
+		                   )
+		                   SELECT 1 FROM team_members tm WHERE tm.business_id = b.id AND tm.user_id = $1 AND tm.team_id IN (SELECT id FROM team_tree)
+		               )
+		           )
+		           OR (
+		               EXISTS (SELECT 1 FROM memberships mh WHERE mh.business_id = b.id AND mh.user_id = $2 AND mh.role = 'employee' AND mh.is_suspended = false)
+		               AND EXISTS (
+		                   SELECT 1 FROM user_permissions up WHERE up.business_id = b.id AND up.user_id = $2 AND up.permission = 'can_view_screenshots'
+		               )
+		           )
+		       )
+		)`,
+		employeeID, callerID).Scan(&allowed)
+	return allowed, err
 }
 
 // RosterEntry is one employee row with rollups for the dashboard roster.
@@ -156,6 +213,13 @@ const ownedFilter = `business_id IN (
 	       )
 	       SELECT 1 FROM team_members tm
 	        WHERE tm.business_id = m.business_id AND tm.user_id = $1 AND tm.team_id IN (SELECT id FROM team_tree)
+	   )
+	UNION
+	SELECT m.business_id FROM memberships m
+	 WHERE m.user_id = $2 AND m.is_suspended = false
+	   AND EXISTS (
+	       SELECT 1 FROM user_permissions up
+	        WHERE up.business_id = m.business_id AND up.user_id = $2 AND up.permission IN ('can_view_reports', 'can_manage_employees', 'can_view_team')
 	   )
 )`
 
@@ -332,12 +396,12 @@ func (s *Store) ScreenshotPathForOwner(ctx context.Context, ownerID, clientUUID 
 		  WHERE s.client_uuid = $1
 		    AND (
 		        b.owner_user_id = $2
-		        OR EXISTS (SELECT 1 FROM memberships m WHERE m.business_id = b.id AND m.user_id = $2 AND m.role = 'owner')
-		        OR s.user_id = $2
+		        OR EXISTS (SELECT 1 FROM memberships mo WHERE mo.business_id = b.id AND mo.user_id = $2 AND mo.role = 'owner')
 		        OR (
-		            EXISTS (
-		                SELECT 1 FROM memberships m
-		                 WHERE m.business_id = b.id AND m.user_id = $2 AND m.role = 'team_lead' AND m.is_suspended = false
+		            s.user_id != $2
+		            AND EXISTS (
+		                SELECT 1 FROM memberships ml
+		                 WHERE ml.business_id = b.id AND ml.user_id = $2 AND ml.role = 'team_lead' AND ml.is_suspended = false
 		            )
 		            AND EXISTS (
 		                SELECT 1 FROM user_permissions up
@@ -351,6 +415,16 @@ func (s *Store) ScreenshotPathForOwner(ctx context.Context, ownerID, clientUUID 
 		                )
 		                SELECT 1 FROM team_members tm
 		                 WHERE tm.business_id = b.id AND tm.user_id = s.user_id AND tm.team_id IN (SELECT id FROM team_tree)
+		            )
+		        )
+		        OR (
+		            EXISTS (
+		                SELECT 1 FROM memberships mh
+		                 WHERE mh.business_id = b.id AND mh.user_id = $2 AND mh.role = 'employee' AND mh.is_suspended = false
+		            )
+		            AND EXISTS (
+		                SELECT 1 FROM user_permissions up
+		                 WHERE up.business_id = b.id AND up.user_id = $2 AND up.permission = 'can_view_screenshots'
 		            )
 		        )
 		    )`,

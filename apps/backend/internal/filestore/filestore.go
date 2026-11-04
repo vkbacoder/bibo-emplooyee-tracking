@@ -70,9 +70,17 @@ func (s *Store) Write(businessID, userID string, ts int64, clientUUID string, da
 		_ = os.Remove(tmp)
 		return "", werr
 	}
-	if err := os.Rename(tmp, abs); err != nil {
+	var renErr error
+	for attempts := 0; attempts < 15; attempts++ {
+		renErr = os.Rename(tmp, abs)
+		if renErr == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if renErr != nil {
 		_ = os.Remove(tmp)
-		return "", err
+		return "", renErr
 	}
 	return rel, nil
 }

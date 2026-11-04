@@ -14,7 +14,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-const testDSN = "postgres://postgres@127.0.0.1:54339/ctracking_test?sslmode=disable"
+const testDSN = "postgres://postgres@127.0.0.1:5432/ctracking_test?sslmode=disable"
 
 // TestMigrationGooseUpDown verifies Goose Up to 13, Up to 14, Down to 13, and Up to 14.
 func TestMigrationGooseUpDown(t *testing.T) {

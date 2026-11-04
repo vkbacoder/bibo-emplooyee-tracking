@@ -1,6 +1,7 @@
 package filestore
 
 import (
+	"runtime"
 	"bytes"
 	"os"
 	"path/filepath"
@@ -48,7 +49,9 @@ func TestWriteConcurrentSameScreenshot(t *testing.T) {
 			t.Errorf("leftover temp file %s", e.Name())
 		}
 	}
-	if info, _ := os.Stat(filepath.Join(root, rel)); info.Mode().Perm() != 0o644 {
-		t.Errorf("mode = %v, want 0644", info.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		if info, _ := os.Stat(filepath.Join(root, rel)); info.Mode().Perm() != 0o644 {
+			t.Errorf("mode = %v, want 0644", info.Mode().Perm())
+		}
 	}
 }

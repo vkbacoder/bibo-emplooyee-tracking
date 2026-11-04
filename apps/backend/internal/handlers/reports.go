@@ -120,6 +120,17 @@ func (h *ReportsHandler) Screenshots(c *gin.Context) {
 	if !ok {
 		return
 	}
+
+	canView, err := h.store.CanViewEmployeeScreenshots(c.Request.Context(), ownerID, empID)
+	if err != nil {
+		serverError(c, err)
+		return
+	}
+	if !canView {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions to view screenshots"})
+		return
+	}
+
 	limit := clampInt(c.Query("limit"), 50, 1, 200)
 	offset := clampInt(c.Query("offset"), 0, 0, 1<<31)
 	source := strings.TrimSpace(c.Query("source"))

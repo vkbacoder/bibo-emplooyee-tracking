@@ -514,6 +514,44 @@ func (s *Store) RemoveMemberFromTeam(ctx context.Context, businessID, userID, ac
 // Roster & Organizational Members Query
 // ---------------------------------------------------------------------
 
+// ListTeamMembers returns all members assigned to or leading the specified team in a business.
+func (s *Store) ListTeamMembers(ctx context.Context, businessID, teamID string) ([]OrgMember, error) {
+	query := `
+		SELECT u.id, COALESCE(u.email, ''), COALESCE(u.username, ''), u.display_name,
+		       m.role, m.is_suspended, m.created_at,
+		       COALESCE(tm.team_id, t.id) AS team_id,
+		       t.name AS team_name,
+		       EXISTS(SELECT 1 FROM teams lt WHERE lt.business_id = $1 AND lt.lead_user_id = u.id) AS is_team_lead,
+		       COALESCE((SELECT array_agg(lt.id::text) FROM teams lt WHERE lt.business_id = $1 AND lt.lead_user_id = u.id), '{}') AS led_team_ids
+		  FROM memberships m
+		  JOIN users u ON u.id = m.user_id
+		  JOIN teams t ON t.business_id = $1 AND t.id = $2
+		  LEFT JOIN team_members tm ON tm.business_id = m.business_id AND tm.user_id = m.user_id
+		 WHERE m.business_id = $1
+		   AND (tm.team_id = $2 OR t.lead_user_id = u.id)
+		 ORDER BY u.display_name
+	`
+	rows, err := s.pool.Query(ctx, query, businessID, teamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []OrgMember{}
+	for rows.Next() {
+		var m OrgMember
+		if err := rows.Scan(
+			&m.UserID, &m.Email, &m.Username, &m.DisplayName,
+			&m.Role, &m.IsSuspended, &m.CreatedAt,
+			&m.TeamID, &m.TeamName, &m.IsTeamLead, &m.LedTeamIDs,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 // ListOrgMembers returns the roster with team assignment, role, and suspension status.
 func (s *Store) ListOrgMembers(ctx context.Context, businessID, callerUserID string) ([]OrgMember, error) {
 	teamIDs, isOrgWide, err := s.GetAuthorizedTeamIDs(ctx, businessID, callerUserID)

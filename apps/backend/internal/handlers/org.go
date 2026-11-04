@@ -280,24 +280,83 @@ func (h *OrgHandler) ListTeamMembers(c *gin.Context) {
 	businessID := c.Param("id")
 	teamID := c.Param("team_id")
 
-	if _, ok := h.requireRole(c, businessID, "owner", "team_lead"); !ok {
+	// 1. Verify caller is an active, non-suspended member of this business
+	role, isSuspended, err := h.store.GetMemberRole(c.Request.Context(), businessID, callerID)
+	if errors.Is(err, store.ErrNotFound) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this business"})
+		return
+	}
+	if err != nil {
+		serverError(c, err)
+		return
+	}
+	if isSuspended {
+		c.JSON(http.StatusForbidden, gin.H{"error": "business membership suspended"})
 		return
 	}
 
-	members, err := h.store.ListOrgMembers(c.Request.Context(), businessID, callerID)
+	// 2. Verify that the requested team exists and belongs to the requested business
+	// Returns 404 if team does not exist or belongs to another business (prevents cross-tenant leaks)
+	_, err = h.store.GetTeam(c.Request.Context(), businessID, teamID)
+	if errors.Is(err, store.ErrNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
+		return
+	}
 	if err != nil {
 		serverError(c, err)
 		return
 	}
 
-	teamMembers := make([]store.OrgMember, 0)
-	for _, m := range members {
-		if m.TeamID != nil && *m.TeamID == teamID {
-			teamMembers = append(teamMembers, m)
+	// 3. Authorization check:
+	// - Owner: Full org-wide access
+	// - Team Lead: Strictly restricted to their assigned team hierarchy
+	// - HR (delegated permission can_view_team, can_manage_employees, or can_manage_team): Allowed
+	// - Standard Employee: Denied (403)
+	authorized := false
+	if role == "owner" {
+		authorized = true
+	} else if role == "team_lead" {
+		teamIDs, isOrgWide, err := h.store.GetAuthorizedTeamIDs(c.Request.Context(), businessID, callerID)
+		if err != nil {
+			serverError(c, err)
+			return
+		}
+		if isOrgWide {
+			authorized = true
+		} else {
+			for _, tid := range teamIDs {
+				if tid == teamID {
+					authorized = true
+					break
+				}
+			}
+		}
+	} else {
+		// Non-team-lead members (e.g. HR): check delegated permissions
+		hasPerm, _ := h.store.HasPermission(c.Request.Context(), businessID, callerID, "can_view_team")
+		if !hasPerm {
+			hasPerm, _ = h.store.HasPermission(c.Request.Context(), businessID, callerID, "can_manage_employees")
+		}
+		if !hasPerm {
+			hasPerm, _ = h.store.HasPermission(c.Request.Context(), businessID, callerID, "can_manage_team")
+		}
+		if hasPerm {
+			authorized = true
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"members": teamMembers})
+	if !authorized {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions to view team members"})
+		return
+	}
+
+	members, err := h.store.ListTeamMembers(c.Request.Context(), businessID, teamID)
+	if err != nil {
+		serverError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"members": members})
 }
 
 type assignMemberReq struct {
