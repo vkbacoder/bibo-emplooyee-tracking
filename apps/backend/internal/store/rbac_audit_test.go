@@ -3,6 +3,9 @@ package store_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -14,11 +17,36 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-const testDSN = "postgres://postgres@127.0.0.1:5432/ctracking_test?sslmode=disable"
+func getTestDSN() string {
+	if dsn := os.Getenv("TEST_DSN"); dsn != "" {
+		lower := strings.ToLower(dsn)
+		if strings.Contains(lower, "render.com") || strings.Contains(lower, "prod") || strings.Contains(lower, "staging") {
+			panic("FATAL: TEST_DSN points to a remote/production/staging database! Refusing to run tests against: " + dsn)
+		}
+		return dsn
+	}
+	port := os.Getenv("PGPORT")
+	if port == "" {
+		port = "5432"
+	}
+	host := os.Getenv("PGHOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	user := os.Getenv("PGUSER")
+	if user == "" {
+		user = "postgres"
+	}
+	dbname := os.Getenv("PGDATABASE")
+	if dbname == "" {
+		dbname = "ctracking_test"
+	}
+	return fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable", user, host, port, dbname)
+}
 
 // TestMigrationGooseUpDown verifies Goose Up to 13, Up to 14, Down to 13, and Up to 14.
 func TestMigrationGooseUpDown(t *testing.T) {
-	sqlDB, err := sql.Open("pgx", testDSN)
+	sqlDB, err := sql.Open("pgx", getTestDSN())
 	if err != nil {
 		t.Fatalf("failed to open sql db: %v", err)
 	}
@@ -29,7 +57,7 @@ func TestMigrationGooseUpDown(t *testing.T) {
 	}
 
 	t.Log("Applying all migrations up to 00014...")
-	if err := db.Migrate(testDSN); err != nil {
+	if err := db.Migrate(getTestDSN()); err != nil {
 		t.Fatalf("db.Migrate failed: %v", err)
 	}
 
@@ -63,7 +91,7 @@ func TestMigrationGooseUpDown(t *testing.T) {
 	}
 
 	t.Log("Testing Goose Up (re-applying migration 00014)...")
-	if err := db.Migrate(testDSN); err != nil {
+	if err := db.Migrate(getTestDSN()); err != nil {
 		t.Fatalf("re-applying goose.Up failed: %v", err)
 	}
 
@@ -77,7 +105,7 @@ func TestMigrationGooseUpDown(t *testing.T) {
 // TestComprehensiveRbacAndSecurityAudit executes all validation tests.
 func TestComprehensiveRbacAndSecurityAudit(t *testing.T) {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, testDSN)
+	pool, err := pgxpool.New(ctx, getTestDSN())
 	if err != nil {
 		t.Fatalf("failed to connect to test db pool: %v", err)
 	}

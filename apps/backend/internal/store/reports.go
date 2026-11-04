@@ -63,14 +63,17 @@ func (s *Store) OwnsEmployee(ctx context.Context, ownerID, employeeID string) (b
 // CanViewEmployeeScreenshots checks whether callerID is authorized to view employeeID's screenshots.
 func (s *Store) CanViewEmployeeScreenshots(ctx context.Context, callerID, employeeID string) (bool, error) {
 	if callerID == employeeID {
-		var isTL bool
-		err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM memberships WHERE user_id = $1 AND role = 'team_lead')`, callerID).Scan(&isTL)
-		if err != nil {
-			return false, err
-		}
-		if isTL {
-			// Team lead cannot view own screenshots through team monitoring
-			return false, nil
+		var role string
+		err := s.pool.QueryRow(ctx, `SELECT role FROM memberships WHERE user_id = $1 AND is_suspended = false`, callerID).Scan(&role)
+		if err == nil {
+			if role == "team_lead" {
+				// Team lead cannot view own screenshots through team monitoring
+				return false, nil
+			}
+			if role == "employee" || role == "owner" {
+				// Active employee or owner can view their own screenshots
+				return true, nil
+			}
 		}
 	}
 
@@ -214,6 +217,9 @@ const ownedFilter = `business_id IN (
 	       SELECT 1 FROM team_members tm
 	        WHERE tm.business_id = m.business_id AND tm.user_id = $1 AND tm.team_id IN (SELECT id FROM team_tree)
 	   )
+	UNION
+	SELECT m.business_id FROM memberships m
+	 WHERE m.user_id = $2 AND m.user_id = $1 AND m.is_suspended = false
 	UNION
 	SELECT m.business_id FROM memberships m
 	 WHERE m.user_id = $2 AND m.is_suspended = false
@@ -398,6 +404,15 @@ func (s *Store) ScreenshotPathForOwner(ctx context.Context, ownerID, clientUUID 
 		        b.owner_user_id = $2
 		        OR EXISTS (SELECT 1 FROM memberships mo WHERE mo.business_id = b.id AND mo.user_id = $2 AND mo.role = 'owner')
 		        OR (
+		            -- Active employee viewing their own screenshot
+		            s.user_id = $2
+		            AND EXISTS (
+		                SELECT 1 FROM memberships me
+		                 WHERE me.business_id = b.id AND me.user_id = $2 AND me.role = 'employee' AND me.is_suspended = false
+		            )
+		        )
+		        OR (
+		            -- Team Lead viewing authorized subordinate's screenshot (self excluded)
 		            s.user_id != $2
 		            AND EXISTS (
 		                SELECT 1 FROM memberships ml

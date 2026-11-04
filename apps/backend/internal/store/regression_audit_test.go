@@ -13,7 +13,7 @@ import (
 
 func TestExistingFunctionalityRegressionAudit(t *testing.T) {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, testDSN)
+	pool, err := pgxpool.New(ctx, getTestDSN())
 	if err != nil {
 		t.Fatalf("connect pool: %v", err)
 	}

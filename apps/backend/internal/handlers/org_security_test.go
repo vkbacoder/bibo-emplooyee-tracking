@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,7 +22,32 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const testDSN = "postgres://postgres@127.0.0.1:5432/ctracking_test?sslmode=disable"
+func getTestDSN() string {
+	if dsn := os.Getenv("TEST_DSN"); dsn != "" {
+		lower := strings.ToLower(dsn)
+		if strings.Contains(lower, "render.com") || strings.Contains(lower, "prod") || strings.Contains(lower, "staging") {
+			panic("FATAL: TEST_DSN points to a remote/production/staging database! Refusing to run tests against: " + dsn)
+		}
+		return dsn
+	}
+	port := os.Getenv("PGPORT")
+	if port == "" {
+		port = "5432"
+	}
+	host := os.Getenv("PGHOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	user := os.Getenv("PGUSER")
+	if user == "" {
+		user = "postgres"
+	}
+	dbname := os.Getenv("PGDATABASE")
+	if dbname == "" {
+		dbname = "ctracking_test"
+	}
+	return fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable", user, host, port, dbname)
+}
 
 func setupTestRouter(st *store.Store, authMgr *auth.Manager, optionalFiles ...*filestore.Store) *gin.Engine {
 	var files *filestore.Store
@@ -106,7 +133,7 @@ func setupTestRouter(st *store.Store, authMgr *auth.Manager, optionalFiles ...*f
 
 func TestHttpAuthorizationSecurity(t *testing.T) {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, testDSN)
+	pool, err := pgxpool.New(ctx, getTestDSN())
 	if err != nil {
 		t.Fatalf("connect pool: %v", err)
 	}
@@ -322,7 +349,7 @@ func TestHttpAuthorizationSecurity(t *testing.T) {
 // authorization regression scenarios for GET /v1/businesses/:id/teams/:team_id/members.
 func TestListTeamMembersAuthorization_IndependentScenarios(t *testing.T) {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, testDSN)
+	pool, err := pgxpool.New(ctx, getTestDSN())
 	if err != nil {
 		t.Fatalf("connect pool: %v", err)
 	}
@@ -548,7 +575,7 @@ func TestListTeamMembersAuthorization_IndependentScenarios(t *testing.T) {
 // for all roles, enforcing team hierarchy boundaries, self-monitoring prevention, and delegated permissions.
 func TestScreenshotAccess_NonEmptyTestData(t *testing.T) {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, testDSN)
+	pool, err := pgxpool.New(ctx, getTestDSN())
 	if err != nil {
 		t.Fatalf("connect pool: %v", err)
 	}
@@ -693,6 +720,34 @@ func TestScreenshotAccess_NonEmptyTestData(t *testing.T) {
 	}
 
 	// 1. Employee cannot access another employee's screenshots
+	// 1a. Employee viewing own screenshot metadata and image -> Allowed (200 OK)
+	t.Run("Employee_ViewOwnScreenshot_Allowed", func(t *testing.T) {
+		recMeta := getMetadata(subordinateA, subordinateA)
+		if recMeta.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK for employee viewing own screenshot metadata, got %d: %s", recMeta.Code, recMeta.Body.String())
+		}
+		var body struct {
+			Screenshots []any `json:"screenshots"`
+		}
+		_ = json.Unmarshal(recMeta.Body.Bytes(), &body)
+		if len(body.Screenshots) == 0 {
+			t.Fatalf("expected non-empty own screenshot metadata array, got 0")
+		}
+
+		recImg := getImage(subordinateA, shotSubordinate)
+		if recImg.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK for employee streaming own screenshot image, got %d", recImg.Code)
+		}
+		if recImg.Header().Get("Content-Type") != "image/webp" {
+			t.Fatalf("expected image/webp content-type, got %s", recImg.Header().Get("Content-Type"))
+		}
+		if recImg.Body.Len() == 0 {
+			t.Fatalf("expected non-empty image stream body for employee own screenshot")
+		}
+		t.Logf("PASS: Employee successfully accessed own screenshot metadata (200 OK) and streamed %d bytes (200 OK)", recImg.Body.Len())
+	})
+
+	// 1b. Employee cannot access another employee's screenshots -> 403 Forbidden / 404 Not Found
 	t.Run("Employee_AccessOtherEmployeeScreenshots_Blocked", func(t *testing.T) {
 		recMeta := getMetadata(subordinateA, unrelatedA)
 		if recMeta.Code != http.StatusForbidden {
